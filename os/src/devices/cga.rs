@@ -46,24 +46,36 @@ const CGA_COLUMNS: usize = 80;
 const CGA_INDEX_PORT: u16 = 0x3d4; // select register
 const CGA_DATA_PORT: u16 = 0x3d5;  // read/write register
 const CGA_HIGH_BYTE_CMD: u8 = 14;  // cursor high byte
-const CGA_LOW_BYTE_CMD: u8 = 15;   // cursor high byte
+const CGA_LOW_BYTE_CMD: u8 = 15;   // cursor low byte
 
 pub struct CGA {
     index_port: cpu::IoPort,
-    data_port: cpu::IoPort
+    data_port: cpu::IoPort,
+    x : usize,
+    y : usize,
 }
 
 impl CGA {
     const fn new() -> CGA {
         CGA {
             index_port: cpu::IoPort::new(CGA_INDEX_PORT),
-            data_port: cpu::IoPort::new(CGA_DATA_PORT)
+            data_port: cpu::IoPort::new(CGA_DATA_PORT),
+            x : 0,
+            y : 0,
         }
     }
 
-    /// Clear CGA screen.
+    /// Clear CGA screen and cursor to 0,0 position.
     pub fn clear(&mut self) {
         /* Hier muss Code eingefuegt werden */
+
+        for y in 0..CGA_ROWS {
+            for x in 0..CGA_COLUMNS {
+                // write each character from the current row to the previous row
+                self.show(x, y, ' ', CGA_STD_ATTR);
+            }
+        }
+        self.setpos(0, 0);
     }
 
     /// Display the `character` at the given position `x`,`y` with attribute `attrib`.
@@ -89,28 +101,76 @@ impl CGA {
     pub fn getpos(&mut self) -> (usize, usize) {
         /* Hier muss Code eingefuegt werden */
 
-        (0, 0) // Platzhalter, entfernen und durch sinnvollen Rueckgabewert ersetzen 
+        (self.x, self.y) // Platzhalter, entfernen und durch sinnvollen Rueckgabewert ersetzen 
     }
 
     /// Set cursor position `x`,`y` 
     pub fn setpos(&mut self, x: usize, y: usize) {
         /* Hier muss Code eingefuegt werden */
+        self.x = x;
+        self.y = y;
+        if self.x >= CGA_COLUMNS {
+            self.x = CGA_COLUMNS - 1;
+        }
+        if self.y >= CGA_ROWS {
+            self.y = CGA_ROWS - 1;
+        }
     }
 
     /// Print byte `b` at actual position cursor position `x`,`y`
-    pub fn print_byte(&mut self, b: u8) {
-        /* Hier muss Code eingefuegt werden */
+    pub fn print_byte(&mut self, b : u8, bg: Color, fg: Color, blink: bool) {
+        if b == ('\n' as u8) {
+            self.x = 0;
+            self.y += 1;
+            if self.y >= CGA_ROWS {
+                self.scrollup();
+                self.y -= 1;
+            }
+        } else {
+            if self.x >= CGA_COLUMNS{
+                self.x = 0;
+                self.y += 1;
+
+                if self.y >= CGA_ROWS{
+                    self.y = CGA_ROWS-1;
+                    self.scrollup();
+                }
+            }
+            let attribute = self.attribute(bg, fg, blink);
+            self.show(self.x, self.y, b as char, attribute);
+            self.x += 1;
+        }
     }
 
     /// Scroll text lines by one to the top.
     pub fn scrollup(&mut self) {
         /* Hier muss Code eingefuegt werden */
+        for y in 1..CGA_ROWS {
+            for x in 0..CGA_COLUMNS {
+                // write each character from the current row to the previous row
+                unsafe {
+                    let offset = (y * CGA_COLUMNS + x) * 2;
+                    let prev_offset = ((y-1) * CGA_COLUMNS + x ) * 2;
+                    
+                    CGA_BASE_ADDR.offset(prev_offset as isize).write(CGA_BASE_ADDR.offset(offset as isize).read());
+                    CGA_BASE_ADDR.offset(prev_offset as isize +1 ).write(CGA_BASE_ADDR.offset(offset as isize +1).read());
+                } 
+            }
+        }
+        
+        for x in 0..CGA_COLUMNS{
+                self.show(x, CGA_ROWS-1, ' ', CGA_STD_ATTR);
+        }
+        
     }
 
     /// Helper function returning an attribute byte for the given parameters `bg`, `fg`, and `blink`
     pub fn attribute(&mut self, bg: Color, fg: Color, blink: bool) -> u8 {
         /* Hier muss Code eingefuegt werden */
-
-        0 // Platzhalter, entfernen und durch sinnvollen Rueckgabewert ersetzen 
+        let blink_bit = (blink as u8) << 7;
+        
+        let attr = ((bg as u8 & 0x7) << 4 | (fg as u8 & 0xf) ) | blink_bit;
+        
+        attr
     }
 }

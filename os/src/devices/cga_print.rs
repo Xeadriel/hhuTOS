@@ -11,6 +11,7 @@ use core::fmt;
 use core::fmt::Write;
 use spin::Mutex;
 use crate::devices::cga;
+use crate::devices::cga::Color;
 
 /// The global writer that can used as an interface from other modules.
 /// It is threadsafe by using 'Mutex'.
@@ -35,10 +36,10 @@ impl Write for Writer {
         for byte in s.bytes() {
             match byte {
                 // printable ASCII byte or newline
-                0x20..=0x7e | b'\n' => cga.print_byte(byte),
+                0x20..=0x7e | b'\n' => cga.print_byte(byte, Color::Black, Color::White, false),
 
                 // not part of printable ASCII range
-                _ => cga.print_byte(0xfe),
+                _ => cga.print_byte(0xfe, Color::Black, Color::White, false),
             }
         }
 
