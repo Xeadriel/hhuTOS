@@ -250,8 +250,7 @@ impl Keyboard {
     /// Decode and return the key if it is complete.
     pub fn key_hit(&mut self) -> Key {
         let invalid: Key = Default::default();  // nicht explizit initialisierte Tasten sind ungueltig
-
-        /* Hier muss Code eingefuegt werden. */
+        let mut status : u8;
 
         /*****************************************************************************
          * Funktion:        key_hit                                                  *
@@ -273,7 +272,24 @@ impl Keyboard {
          *                  ueberprueft werden kann.                                 *
          *****************************************************************************/
 
-        invalid
+        unsafe{
+            loop{
+                    status = self.control_port.inb();
+                    if status & KBD_OUTB != 0 { // ready
+                        // read keyboard code
+                        self.code = self.data_port.inb();
+                        break;
+                    }
+                }
+        }
+            
+        // check if not mouse and if decoding complete
+        if (status & KBD_AUXB) == 0 && self.key_decoded() {
+            return self.gather
+        }
+
+        // otherwise invalid key
+        return invalid
     }
     
     /// Set the repeat rate of the keyboard (determined by the speed and delay).
@@ -284,7 +300,7 @@ impl Keyboard {
     /// The delay determines how long a key must be pressed before the keyboard starts repeating it.
     /// Valid values are between 0 (minimum delay) and 3 (maximum delay).
     /// 0 = 250ms, 1 = 500ms, 2 = 750ms, 3 = 1000ms
-    pub fn set_repeat_rate(&mut self, speed: u8, delay: u8) {
+    pub fn set_repeat_rate(&mut self, speed: u8, delay: u8) -> i8 {
 
         /* Hier muss Code eingefuegt werden. */
 
@@ -306,12 +322,72 @@ impl Keyboard {
          *                  ((2 ^ B) * (D + 8) / 240 sec                             *
          *                  Bits 4-3 = B; Bits 2-0 = D;                              *
          *****************************************************************************/
+
+         loop{
+            unsafe{
+                let status = self.control_port.inb();
+                if status & KBD_INPB == 0 { // ready
+                    // write repeat ratecommand to keyboard
+                    self.data_port.outb(0xF3);
+                    break;
+                }
+            }
+        }
+
+        // wait until command answer arrives
+        loop{
+            unsafe{
+                let status = self.control_port.inb();
+                if status & KBD_OUTB != 0 { 
+                    break;
+
+                }
+            }
+        }
+        
+        unsafe {
+            let answer = self.data_port.inb();
+            if answer != 0xfa { // command not accepted
+                return -1
+            }
+        }
+        
+
+        // set repeat rate
+        let mut command = 0x00;
+        command |= (speed << 2) & 0x1f;
+        command |= (delay & 0x03);
+
+        unsafe{
+            self.data_port.outb(command);
+        }
+
+        // wait until command answer arrives
+        loop{
+            unsafe{
+                let status = self.control_port.inb();
+                if status & KBD_OUTB != 0 { 
+                    break;
+                    }
+
+            }
+        }
+        
+        unsafe {
+        let answer = self.data_port.inb();
+            if answer != 0xfa { // command not accepted
+                return -1
+            }
+        }
+
+        return 0
+
     }
     
     /// Enable/Disable the LEDs on the keyboard.
     /// Multiple LEDs can be set at the same time as a bit mask.
     /// 1 = Caps Lock, 2 = Num Lock, 4 = Scroll Lock
-    pub fn set_led(&mut self, led: u8, on: bool) {
+    pub fn set_led(&mut self, led: u8, on: bool) -> i8{
 
         /* Hier muss Code eingefuegt werden. */
         
@@ -324,5 +400,62 @@ impl Keyboard {
          *      led:        Welche LED? (caps_lock, num_lock, scroll_lock)           *
          *      on:         0 = aus, 1 = an                                          *
          *****************************************************************************/
+    
+         loop{
+            unsafe{
+                let status = self.control_port.inb();
+                if status & KBD_INPB == 0 { // ready
+                    // write repeat ratecommand to keyboard
+                    self.data_port.outb(0xED);
+                    break;
+                }
+            }
+        }
+
+        // wait until command answer arrives
+        loop{
+            unsafe{
+                let status = self.control_port.inb();
+                if status & KBD_OUTB != 0 { 
+                    break;
+
+                }
+            }
+        }
+        
+        unsafe {
+            let answer = self.data_port.inb();
+            if answer != 0xfa { // command not accepted
+                return -1
+            }
+        }
+        
+
+        // set repeat rate
+        let command = 0x00 | led & on as u8;
+
+        unsafe{
+            self.data_port.outb(command);
+        }
+
+        // wait until command answer arrives
+        loop{
+            unsafe{
+                let status = self.control_port.inb();
+                if status & KBD_OUTB != 0 { 
+                    break;
+                    }
+
+            }
+        }
+        
+        unsafe {
+        let answer = self.data_port.inb();
+            if answer != 0xfa { // command not accepted
+                return -1
+            }
+        }
+
+        return 0
     }
 }
