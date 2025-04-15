@@ -15,11 +15,13 @@ pub fn run() {
     // 'key_hit' aufrufen und Zeichen ausgeben
     loop {
         let mut c = keyboard.key_hit();
-        let ascii = c.get_ascii();
+        let mut ascii = c.get_ascii();
 
-        if ascii >= 0x20 && ascii <= 0x7e || ascii == b'\n' {
+        if ascii >= 0x20 && ascii <= 0x7e || ascii == 13 { // 13 == return
+            if ascii == 13 {ascii = b'\n'}
             cga.print_byte(ascii, Color::Black, Color::White, false);
         }
     }
+    
 }
 

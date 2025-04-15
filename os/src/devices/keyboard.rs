@@ -356,7 +356,7 @@ impl Keyboard {
         // set repeat rate
         let mut command = 0x00;
         command |= (speed << 2) & 0x1f;
-        command |= (delay & 0x03);
+        command |= delay & 0x03;
 
         unsafe{
             self.data_port.outb(command);

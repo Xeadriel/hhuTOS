@@ -34,11 +34,19 @@ use kernel::cpu;
 
 use user::aufgabe1::text_demo;
 use user::aufgabe1::keyboard_demo;
+use user::aufgabe2::heap_demo;
+use user::aufgabe2::sound_demo;
 
 fn aufgabe1() {
     text_demo::run();
     println!("");
     keyboard_demo::run();
+}
+
+fn aufgabe2() {
+    heap_demo::run();
+    println!("");
+    sound_demo::run();
 }
 
 #[unsafe(no_mangle)]
@@ -49,6 +57,8 @@ pub extern "C" fn startup() {
     
     aufgabe1();
     
+    //aufgabe2();
+
     loop{}
 }
 
