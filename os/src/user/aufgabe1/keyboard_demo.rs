@@ -7,7 +7,6 @@ use crate::cga::Color;
 
 pub fn run() {
 
-    /* Hier muss Code einfgeügt werden */
     let mut keyboard = keyboard::KEYBOARD.lock();
     let mut cga = cga::CGA.lock();
 

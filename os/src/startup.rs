@@ -34,6 +34,8 @@ use kernel::cpu;
 
 use user::aufgabe1::text_demo;
 use user::aufgabe1::keyboard_demo;
+
+use kernel::allocator;
 use user::aufgabe2::heap_demo;
 use user::aufgabe2::sound_demo;
 
@@ -51,13 +53,16 @@ fn aufgabe2() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn startup() {
-    kprintln!("Welcome to hhuTOS!");
+    // kprintln!("Welcome to hhuTOS!");
+    // cga::CGA.lock().clear();
     
-    cga::CGA.lock().clear();
+    // aufgabe1();
     
-    aufgabe1();
+    // Speicherverwaltung initialisieren
+    allocator::init();
+
     
-    //aufgabe2();
+    aufgabe2();
 
     loop{}
 }

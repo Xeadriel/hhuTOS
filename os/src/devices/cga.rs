@@ -37,7 +37,7 @@ pub enum Color {
     White      = 15,
 }
 
-pub const CGA_STD_ATTR: u8 = (Color::Black as u8) << 4 | (Color::Green as u8);
+pub const CGA_STD_ATTR: u8 = (Color::Black as u8) << 4 | (Color::White as u8);
 
 const CGA_BASE_ADDR: *mut u8 = 0xb8000 as *mut u8;
 const CGA_ROWS: usize = 25;
@@ -51,8 +51,6 @@ const CGA_LOW_BYTE_CMD: u8 = 15;   // cursor low byte
 pub struct CGA {
     index_port: cpu::IoPort,
     data_port: cpu::IoPort,
-    x : usize,
-    y : usize,
 }
 
 impl CGA {
@@ -60,8 +58,6 @@ impl CGA {
         CGA {
             index_port: cpu::IoPort::new(CGA_INDEX_PORT),
             data_port: cpu::IoPort::new(CGA_DATA_PORT),
-            x : 0,
-            y : 0,
         }
     }
 
@@ -97,49 +93,85 @@ impl CGA {
         }
     }
 
+    pub fn enableCursor(&mut self) {
+        /* Hier muss Code eingefuegt werden */
+        unsafe {
+            self.index_port.outb(0x0A); //scanline start
+            self.data_port.outb(0x00);
+            
+            self.index_port.outb(0x0B); //scanline end
+            self.data_port.outb(0x0F);
+        }
+    }
+
     /// Return cursor position `x`,`y`
     pub fn getpos(&mut self) -> (usize, usize) {
         /* Hier muss Code eingefuegt werden */
+        let mut pos : u16;
+        unsafe {
+            self.index_port.outb(CGA_HIGH_BYTE_CMD);
+            pos = self.data_port.inb() as u16;
+            self.index_port.outb(CGA_LOW_BYTE_CMD);
+            pos |= (self.data_port.inb() as u16) << 8;
+        }
+        
+        let x = pos as usize % CGA_COLUMNS;
+        let y = pos as usize / CGA_COLUMNS;
 
-        (self.x, self.y) // Platzhalter, entfernen und durch sinnvollen Rueckgabewert ersetzen 
+        (x,y)
     }
 
     /// Set cursor position `x`,`y` 
-    pub fn setpos(&mut self, x: usize, y: usize) {
+    pub fn setpos(&mut self, mut x: usize, mut y: usize) {
         /* Hier muss Code eingefuegt werden */
-        self.x = x;
-        self.y = y;
-        if self.x >= CGA_COLUMNS {
-            self.x = CGA_COLUMNS - 1;
+
+        if x >= CGA_COLUMNS {
+            x = CGA_COLUMNS - 1;
         }
-        if self.y >= CGA_ROWS {
-            self.y = CGA_ROWS - 1;
+        if y >= CGA_ROWS {
+            y = CGA_ROWS - 1;
         }
+
+
+        let pos : u16 = (y * CGA_COLUMNS + x) as u16;
+
+        // set cursor position
+        unsafe {
+            self.index_port.outb(CGA_HIGH_BYTE_CMD);
+            self.data_port.outb((pos & 0xFF) as u8);
+            self.index_port.outb(CGA_LOW_BYTE_CMD);
+            self.data_port.outb(((pos >> 8) & 0xFF) as u8);
+        }
+
+        self.enableCursor();
     }
 
     /// Print byte `b` at actual position cursor position `x`,`y`
     pub fn print_byte(&mut self, b : u8, bg: Color, fg: Color, blink: bool) {
+        let (mut x, mut y) = self.getpos();
+
         if b == ('\n' as u8) {
-            self.x = 0;
-            self.y += 1;
-            if self.y >= CGA_ROWS {
+            x = 0;
+            y += 1;
+            if y >= CGA_ROWS {
                 self.scrollup();
-                self.y -= 1;
+                y -= 1;
             }
         } else {
-            if self.x >= CGA_COLUMNS{
-                self.x = 0;
-                self.y += 1;
+            if x >= CGA_COLUMNS{
+                x = 0;
+                y += 1;
 
-                if self.y >= CGA_ROWS{
-                    self.y = CGA_ROWS-1;
+                if y >= CGA_ROWS{
+                    y = CGA_ROWS-1;
                     self.scrollup();
                 }
             }
             let attribute = self.attribute(bg, fg, blink);
-            self.show(self.x, self.y, b as char, attribute);
-            self.x += 1;
+            self.show(x, y, b as char, attribute);
+            x += 1;
         }
+        self.setpos(x, y);
     }
 
     /// Scroll text lines by one to the top.
@@ -159,9 +191,9 @@ impl CGA {
         }
         
         for x in 0..CGA_COLUMNS{
-                self.show(x, CGA_ROWS-1, ' ', CGA_STD_ATTR);
+            self.show(x, CGA_ROWS-1, ' ', CGA_STD_ATTR);
         }
-        
+        self.setpos(0, CGA_ROWS-1);
     }
 
     /// Helper function returning an attribute byte for the given parameters `bg`, `fg`, and `blink`

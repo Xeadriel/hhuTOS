@@ -1,31 +1,27 @@
+use alloc::boxed::Box;
+use alloc::vec;
 
-use crate::devices::cga as cga;  
-use crate::devices::cga_print;       
-use crate::devices::key as key;     
-use crate::devices::keyboard as keyboard;  
-use crate::kernel::allocator as allocator;  
-use alloc::{boxed::Box, vec::Vec};
-
-
-
-// Hilfsfunktion: Auf Return-Taste warten
-fn wait_for_return() {
-
-    println!("");
-    println!("");
-    println!("Weiter mit <ENTER>");
-
-   loop {
-        let mut key: key::Key = keyboard::KEYBOARD.lock().key_hit();
-
-        if key.valid() == true {
-            if key.get_ascii() == 13 { break; }
-        }
-    }
-}
+use crate::kernel::allocator;
 
 pub fn run () {
 
-    return
-    /* Hier muss Code eingefuegt werden */
+    allocator::dump_free_list();
+
+    let x = Box::new(1); // allocate memory on the heap
+    allocator::dump_free_list();
+
+    drop(x); // deallocate memory on the heap
+    allocator::dump_free_list();
+
+    // let x = Box::new([0; 10]); // allocate memory on the heap
+    // allocator::dump_free_list();
+
+    // let x = Box::new([0; 15000]); // allocate memory on the heap
+    // allocator::dump_free_list();
+
+    // let x = vec![0; 247133]; // allocate memory on the heap
+    // allocator::dump_free_list();
+
+    // let x = vec![0; 700000]; // allocate memory on the heap
+    // allocator::dump_free_list();
 }
