@@ -97,7 +97,7 @@ impl CGA {
         /* Hier muss Code eingefuegt werden */
         unsafe {
             self.index_port.outb(0x0A); //scanline start
-            self.data_port.outb(0x00);
+            self.data_port.outb(0x0D);
             
             self.index_port.outb(0x0B); //scanline end
             self.data_port.outb(0x0F);
@@ -109,9 +109,9 @@ impl CGA {
         /* Hier muss Code eingefuegt werden */
         let mut pos : u16;
         unsafe {
-            self.index_port.outb(CGA_HIGH_BYTE_CMD);
-            pos = self.data_port.inb() as u16;
             self.index_port.outb(CGA_LOW_BYTE_CMD);
+            pos = self.data_port.inb() as u16;
+            self.index_port.outb(CGA_HIGH_BYTE_CMD);
             pos |= (self.data_port.inb() as u16) << 8;
         }
         
@@ -137,13 +137,11 @@ impl CGA {
 
         // set cursor position
         unsafe {
-            self.index_port.outb(CGA_HIGH_BYTE_CMD);
-            self.data_port.outb((pos & 0xFF) as u8);
             self.index_port.outb(CGA_LOW_BYTE_CMD);
+            self.data_port.outb((pos & 0xFF) as u8);
+            self.index_port.outb(CGA_HIGH_BYTE_CMD);
             self.data_port.outb(((pos >> 8) & 0xFF) as u8);
         }
-
-        self.enableCursor();
     }
 
     /// Print byte `b` at actual position cursor position `x`,`y`
@@ -155,7 +153,6 @@ impl CGA {
             y += 1;
             if y >= CGA_ROWS {
                 self.scrollup();
-                y -= 1;
             }
         } else {
             if x >= CGA_COLUMNS{

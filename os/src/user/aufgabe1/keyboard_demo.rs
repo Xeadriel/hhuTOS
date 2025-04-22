@@ -8,7 +8,6 @@ use crate::cga::Color;
 pub fn run() {
 
     let mut keyboard = keyboard::KEYBOARD.lock();
-    let mut cga = cga::CGA.lock();
 
     keyboard.set_repeat_rate(2, 2);
     // 'key_hit' aufrufen und Zeichen ausgeben
@@ -18,7 +17,7 @@ pub fn run() {
 
         if ascii >= 0x20 && ascii <= 0x7e || ascii == 13 { // 13 == return
             if ascii == 13 {ascii = b'\n'}
-            cga.print_byte(ascii, Color::Black, Color::White, false);
+            print!("{}", ascii as char);
         }
     }
     
