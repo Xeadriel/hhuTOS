@@ -53,17 +53,16 @@ fn aufgabe2() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn startup() {
-    // kprintln!("Welcome to hhuTOS!");
     cga::CGA.lock().clear();
     cga::CGA.lock().enableCursor();
     
-    aufgabe1();
+    // aufgabe1();
     
     // Speicherverwaltung initialisieren
-    // allocator::init();
+    allocator::init();
 
     
-    // aufgabe2();
+    aufgabe2();
 
     loop{}
 }

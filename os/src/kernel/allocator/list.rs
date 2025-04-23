@@ -145,6 +145,7 @@ impl LinkedListAllocator {
     pub fn dump_free_list(&mut self) {
 
         println!("--- Free List Dump ---");
+        println!("Heap start: {:#x}, Heap end: {:#x}", self.heap_start, self.heap_end);
         let mut current = &self.head;
 
         while let Some(ref block) = current.next {
@@ -152,7 +153,7 @@ impl LinkedListAllocator {
             let end = block.end_addr();
             let size = block.size;
             println!(
-                "Free block at {:p} -> size: {:#x} (from {:#x} to {:#x})",
+                "Free block at {:p} -> size: {:}B (from {:#x} to {:#x})",
                 *block,
                 size,
                 start,
@@ -166,7 +167,7 @@ impl LinkedListAllocator {
     }
 
     pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
-        kprint!("list-alloc: size={}, align={}", layout.size(), layout.align());
+        println!("list-alloc: size={}, align={}", layout.size(), layout.align());
 
         // perform layout adjustments
         let (size, align) = LinkedListAllocator::size_align(layout);
@@ -187,7 +188,7 @@ impl LinkedListAllocator {
     }
 
     pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        // kprintln!("list-dealloc: size={}, align={}; not supported", layout.size(), layout.align());
+        println!("list-dealloc: size={}, align={}; ", layout.size(), layout.align());
 
         let (size, _) = LinkedListAllocator::size_align(layout);
 

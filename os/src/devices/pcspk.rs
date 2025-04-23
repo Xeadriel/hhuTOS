@@ -84,7 +84,29 @@ impl Speaker {
     /// Play a specific frequency for a given amount of time (milliseconds).
     pub fn play(&mut self, frequency: usize, duration: usize) {
 
-        /* Hier muss Code eingefuegt werden */
+        if frequency == 0 {
+            self.off();
+            return;
+        }
+    
+        let divisor = 1193182 / frequency;
+    
+        unsafe {
+            // Set PIT counter 2 to mode 3 (square wave generator)
+            self.pit_ctrl_port.outb(0b10110110); // Channel 2, Access: lobyte/hibyte, Mode 3, Binary
+    
+            // Send frequency divisor (lo-byte first, then hi-byte)
+            self.pit_data2_port.outb(divisor as u8);         // Low byte
+            self.pit_data2_port.outb((divisor >> 8) as u8);  // High byte
+    
+            // Turn the speaker on (enable bits 0 and 1 in PPI port)
+            let mut val = self.ppi_port.inb();
+            val |= 0x03; // Set bits 0 and 1
+            self.ppi_port.outb(val);
+        }
+    
+        self.delay(duration);
+        self.off();
 
     }
 
@@ -92,23 +114,40 @@ impl Speaker {
     /// The played tone is dependent on counter 2 of the PIT.
     pub fn on(&mut self) {
 
-        /* Hier muss Code eingefuegt werden */
+        unsafe {
+            
+            let mut port_value = self.ppi_port.inb();
+
+            port_value |= 0b11;
+
+            self.ppi_port.outb(port_value);
+        }
 
     }
 
     /// Turn off the speaker.
     pub fn off(&mut self) {
-
-        /* Hier muss Code eingefuegt werden */
+        unsafe {
+            let mut val = self.ppi_port.inb();
+            val &= !0x03; // Clear bits 0 and 1
+            self.ppi_port.outb(val);
+        }
 
     }
 
     /// Return the current value of the PIT counter (16-bit).
     /// Used by `delay()` to check if the counter has reached 0 or has been reloaded.
     fn read_counter(&mut self) -> u16 {
+        let mut counter: u16 = 0;
 
-        /* Hier muss Code eingefuegt werden */
-        1
+        
+        unsafe {
+            self.pit_ctrl_port.outb(0b0000_0000);
+            counter |= self.pit_data0_port.inb() as u16;
+            counter |= (self.pit_data0_port.inb() as u16) << 8;
+        }
+
+        counter
     }
     
     /// Wait for a given amount of time in milliseconds using counter 0 of the PIT.
@@ -117,9 +156,46 @@ impl Speaker {
     /// Counting from 1193 to 0 takes 1ms.
     fn delay(&mut self, duration: usize) {
 
-        /* Hier muss Code eingefuegt werden */
+        let reload_value: u16 = 1193;
+
+        for _ in 0..duration {
+            unsafe {
+                // Set channel 0 to mode 2 (rate generator), access mode: lobyte/hibyte
+                self.pit_ctrl_port.outb(0b0011_0100); // 00 (chan 0), 11 (lo/hi), 010 (mode 2), 0 (binary)
+
+                // Load reload value (lo byte first)
+                self.pit_data0_port.outb((reload_value & 0xFF) as u8);       // low byte
+                self.pit_data0_port.outb((reload_value >> 8) as u8);         // high byte
+            }
+
+            // Wait for counter to wrap around (when it reaches 0 and reloads)
+            let mut prev = self.read_counter();
+            loop {
+                let curr = self.read_counter();
+                if curr > prev {
+                    break; // PIT counter reloaded (wrapped around)
+                }
+                prev = curr;
+            }
+        }
 
     }
+}
+
+/// plays the Zelda theme using the PC speaker.
+pub fn zelda() {
+    let mut speaker = SPEAKER.lock();
+
+    speaker.play(440, 500);
+    speaker.play(0, 5);
+    speaker.play(329, 750);
+    speaker.play(440, 250);
+    speaker.play(0, 5);
+    speaker.play(440, 125);
+    speaker.play(493,125);
+    speaker.play(523, 125);
+    speaker.play(587, 125);
+    speaker.play(659, 1000);
 }
 
 /// Plays the Tetris theme using the PC speaker.

@@ -42,9 +42,7 @@ impl BumpAllocator {
         let free = self.heap_end - self.next;
     
         println!("Bump Allocator Debug Info:");
-        println!("  Heap start:   {:#x}", self.heap_start);
-        println!("  Heap end:     {:#x}", self.heap_end);
-        println!("  Next pointer: {:#x}", self.next);
+        println!("  Heap start:   {:#x} Heap end:     {:#x}  Next pointer: {:#x}", self.heap_start, self.heap_end, self.next);
         println!("  Used:         {} bytes", used);
         println!("  Free:         {} bytes", free);
         println!("  Total:        {} bytes", total);
@@ -70,7 +68,9 @@ impl BumpAllocator {
     }
 
     /// Deallocate memory (not supported by bump allocator).
-    pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {}
+    pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+        println!("Bump Allocator does not support deallocation")
+    }
 }
 
 // Trait required by the Rust runtime for heap allocations

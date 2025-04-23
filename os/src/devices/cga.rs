@@ -17,6 +17,7 @@ use crate::kernel::cpu as cpu;
 pub static CGA: Mutex<CGA> = Mutex::new(CGA::new());
 
 /// All 16 CGA colors.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(u8)] // store each enum variant as an u8
 pub enum Color {
     Black      = 0,
