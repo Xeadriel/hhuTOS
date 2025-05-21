@@ -1,17 +1,24 @@
+/* ╔═════════════════════════════════════════════════════════════════════════╗
+   ║ Module: keyboard                                                        ║
+   ╟─────────────────────────────────────────────────────────────────────────╢
+   ║ Descr.: Here are the public functions of all modules implemented in the ║
+   ║         keyboard sub directory.                                         ║
+   ╟─────────────────────────────────────────────────────────────────────────╢
+   ║ Author: Michael Schoetter, Univ. Duesseldorf, 6.2.2024                  ║
+   ╚═════════════════════════════════════════════════════════════════════════╝
+*/
+
+use spin::Mutex;
 
 use crate::kernel::cpu as cpu;
 use crate::devices::key as key;
 use crate::devices::key::Key;
 use crate::kernel::cpu::IoPort;
-use crate::kernel::interrupts::intdispatcher::{self, int_disp, InterruptVector};
-use crate::kernel::interrupts::pic::{Irq, PIC};
 
-use alloc::boxed::Box;
-use nolock::queues::mpmc;
-use nolock::queues::mpmc::bounded::scq::{Receiver, Sender};
-
-use spin::{Mutex, Once};
-use crate::kernel::interrupts::isr::ISR;
+/// Global thread-safe access to keyboard.
+/// Usage: let mut keyboard = keyboard::KEYBOARD.lock();
+///        let key = keyboard.key_hit();
+pub static KEYBOARD: Mutex<Keyboard> = Mutex::new(Keyboard::new());
 
 /// Represents the keyboard.
 pub struct Keyboard {
@@ -83,130 +90,6 @@ const KBD_CMD_CPU_RESET: u8 = 0xfe;
 // Keyboard replies
 const KBD_REPLY_ACK:u8 = 0xfa;
 
-
-
-/// Global keyboard instance.
-pub static KEYBOARD: Mutex<Keyboard> = Mutex::new(Keyboard::new());
-
-/// Global key buffer.
-/// Each key is pushed to this queue by the interrupt handler
-/// and can be retrieved at a later time by the user.
-/// Wrapped inside a Once, because the Queue cannot be created inside a const function.
-static KEYBOARD_BUFFER: Once<KeyQueue> = Once::new();
-
-/// Global access to the key buffer.
-/// Usage: let key_buffer = keyboard::get_key_buffer();
-///        let key = key_buffer.get_last_key();
-pub fn get_key_buffer() -> &'static KeyQueue {
-    KEYBOARD_BUFFER.call_once(|| {
-        KeyQueue::new()
-    })
-}
-
-/* ╔═════════════════════════════════════════════════════════════════════════╗
-   ║ Interrupt service routine implementation.                               ║
-   ╚═════════════════════════════════════════════════════════════════════════╝ */
-
-/// Register the keyboard interrupt handler.
-pub fn plugin() {
-    /* Hier muss Code eingefuegt werden */
-    intdispatcher::INT_VECTORS.lock().register(InterruptVector::Keyboard, Box::new(KeyboardISR {}));
-
-    PIC.lock().allow(Irq::Keyboard);
-
-}
-
-/// The keyboard interrupt service routine.
-pub struct KeyboardISR {}
-
-impl ISR for KeyboardISR {
-    fn trigger(&self) {
-        
-        kprintln!("keyboard::trigger called!");
-        /* Hier muss Code eingefuegt werden */        
-        let mut kb = KEYBOARD.lock();
-        if let Some(key) = kb.key_hit_irq() {
-        
-            get_key_buffer().push_key(key);
-        }
-
-        // let key = get_key_buffer().get_last_key();
-        // if  key.is_some() {
-        //     kprintln!("key {}", key.unwrap().get_ascii() as char);
-        // }
-    }
-}
-
-/* ╔═════════════════════════════════════════════════════════════════════════╗
-   ║ Key buffer implementation.                                              ║
-   ╚═════════════════════════════════════════════════════════════════════════╝ */
-
-/// Represents a first in first out queue for keyboard keys.
-/// It uses a multi-producer multi-consumer queue from the nolock crate,
-/// allowing thread safe access without needing a Mutex.
-pub struct KeyQueue {
-    /// Keys can be popped from the queue via the receiver.
-    receiver: Receiver<Key>,
-    /// Keys can be pushed to the queue via the sender.
-    sender: Sender<Key>
-}
-
-impl KeyQueue {
-    /// Create a new empty queue.
-    /// Unfortunately, this cannot be done in a const function.
-    fn new() -> KeyQueue {
-        let (receiver, sender) = mpmc::bounded::scq::queue(128);
-        KeyQueue { receiver, sender }
-    }
-
-    /// Push a key to the queue.
-    /// If the queue is full, the key is silently discarded.
-    pub fn push_key(&self, key: Key) {
-        if self.receiver.is_closed() {
-            // Should never haven
-            panic!("KeyQueue is closed!");
-        }
-
-        // Enqueue the key into the queue.
-        // If the queue is full, we ignore the key.
-        self.sender.try_enqueue(key).ok();
-    }
-
-    /// Pop a key from the queue.
-    /// If the queue is empty, None is returned.
-    pub fn get_last_key(&self) -> Option<Key> {
-        if self.receiver.is_closed() {
-            // Should never haven
-            panic!("KeyQueue is closed!");
-        }
-
-        match self.receiver.try_dequeue() {
-            Ok(key) => Some(key),
-            Err(_) => None
-        }
-    }
-
-    /// Pop a key from the queue.
-    /// If the queue is empty, the function blocks until a key is available.
-    pub fn wait_for_key(&self) -> Key {
-        if self.receiver.is_closed() {
-            // Should never haven
-            panic!("KeyQueue is closed!");
-        }
-
-        loop {
-            match self.receiver.try_dequeue() {
-                Ok(key) => return key,
-                Err(_) => {}
-            }
-        }
-    }
-}
-
-/* ╔═════════════════════════════════════════════════════════════════════════╗
-   ║ Implementation of the keyboard driver itself.                           ║
-   ╚═════════════════════════════════════════════════════════════════════════╝ */
-
 impl Keyboard {
     pub const fn new() -> Keyboard {
         Keyboard {
@@ -218,34 +101,7 @@ impl Keyboard {
             data_port: IoPort::new(KBD_DATA_PORT)
         }
     }
-
-    /// Poll a byte from the keyboard controller.
-    /// Decode and return the key if it is complete.
-    fn key_hit_irq(&mut self) -> Option<Key> {
-
-        /* Hier muss Code eingefuegt werden */      
-        let status = unsafe { self.control_port.inb() };
-        
-        // if not ready
-        if status & KBD_OUTB == 0 {
-            return None;
-        }
-        // if not mouse
-        if (status & KBD_AUXB) != 0 {
-            return None;
-        }
-        // read
-        let code = unsafe { self.data_port.inb() };
-        self.code = code;
-
-        // if ready to decode
-        if self.key_decoded() {
-            Some(self.gather)
-        } else {
-            None
-        }
-    }
-
+    
     /// Interpret the make and break codes of the keyboard.
     /// Return true if the key is complete, false if codes are missing.
     fn key_decoded(&mut self) -> bool {

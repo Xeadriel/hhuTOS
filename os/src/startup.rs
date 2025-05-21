@@ -13,6 +13,8 @@
 #![allow(unused_variables)] // avoid warnings
 #![allow(unused_imports)]
 #![allow(unused_macros)]
+#![feature(abi_x86_interrupt)]
+#![feature(naked_functions)]
 
 extern crate alloc;
 extern crate spin; // we need a mutex in devices::cga_print
@@ -23,7 +25,9 @@ mod devices;
 mod kernel;
 mod user;
 mod consts;
+mod library;
 
+use core::arch::asm;
 use core::panic::PanicInfo;
 
 use devices::cga; // shortcut for cga
@@ -32,6 +36,9 @@ use devices::keyboard; // shortcut for keyboard
 
 use kernel::cpu;
 
+use kernel::interrupts::idt;
+use kernel::interrupts::intdispatcher;
+use kernel::interrupts::pic::PIC;
 use user::aufgabe1::text_demo;
 use user::aufgabe1::keyboard_demo;
 
@@ -53,16 +60,38 @@ fn aufgabe2() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn startup() {
+    allocator::init();
+    kprintln!("Heap Allocator initialized.");
+
+    PIC.lock().init();
+    kprintln!("Programmable Interrupt Controller initialized.");
+
+    idt::get_idt().load();
+    kprintln!("Interrupt Descriptor Table loaded.");
+
+    intdispatcher::INT_VECTORS.lock().init();
+    kprintln!("Interrupt Dispatcher INT_VECTORS initialized.");
+
     cga::CGA.lock().clear();
-    cga::CGA.lock().enableCursor();
+    cga::CGA.lock().enable_cursor();
+    kprintln!("CGA cleared and ready.");
+
+    keyboard::plugin();
+    kprintln!("Keyboard plugged in.");
     
+    cpu::enable_int();
+    kprintln!("Interrupts enabled.");
+    
+    // unsafe {
+    //     asm!(
+    //         "INT 100" 
+    //     );
+    // }
     // aufgabe1();
     
     // Speicherverwaltung initialisieren
-    allocator::init();
 
-    
-    aufgabe2();
+    // aufgabe2();
 
     loop{}
 }

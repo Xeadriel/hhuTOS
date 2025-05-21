@@ -94,7 +94,7 @@ impl CGA {
         }
     }
 
-    pub fn enableCursor(&mut self) {
+    pub fn enable_cursor(&mut self) {
         /* Hier muss Code eingefuegt werden */
         unsafe {
             self.index_port.outb(0x0A); //scanline start

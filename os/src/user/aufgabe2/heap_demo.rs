@@ -20,16 +20,16 @@ pub fn run () {
 
     allocator::dump_free_list();
 
-    unsafe {cga_print::fg_color = Color::LightGreen;}
+    unsafe {cga_print::FG_COLOR = Color::LightGreen;}
     let s1 = Box::new(S { a: 1, b: 2 });
     println!("s1.a={}, s1.b={}", s1.a, s1.b);
-    unsafe {cga_print::fg_color = Color::White;}
+    unsafe {cga_print::FG_COLOR = Color::White;}
     allocator::dump_free_list();
     
-    unsafe {cga_print::fg_color = Color::LightGreen;}
+    unsafe {cga_print::FG_COLOR = Color::LightGreen;}
     let s2 = Box::new(S { a: 3, b: 4 });
     println!("s2.a={}, s2.b={}", s2.a, s2.b);
-    unsafe {cga_print::fg_color = Color::White;}
+    unsafe {cga_print::FG_COLOR = Color::White;}
     allocator::dump_free_list();
 
     println!("");
@@ -42,14 +42,14 @@ pub fn run () {
     println!("===========================");
     println!("");
 
-    unsafe {cga_print::fg_color = Color::LightRed;}
+    unsafe {cga_print::FG_COLOR = Color::LightRed;}
     drop(s1);
-    unsafe {cga_print::fg_color = Color::White;}
+    unsafe {cga_print::FG_COLOR = Color::White;}
     allocator::dump_free_list();
 
-    unsafe {cga_print::fg_color = Color::LightRed;}
+    unsafe {cga_print::FG_COLOR = Color::LightRed;}
     drop(s2);
-    unsafe {cga_print::fg_color = Color::White;}
+    unsafe {cga_print::FG_COLOR = Color::White;}
     allocator::dump_free_list();
     
     println!("");
@@ -62,9 +62,9 @@ pub fn run () {
     println!("===========================");
     println!("");
 
-    unsafe {cga_print::fg_color = Color::LightGreen;}
-    let mut s1 = vec![S { a: 1, b: 2 }, S { a: 3, b: 4 }, S { a: 5, b: 6 }];
-    unsafe {cga_print::fg_color = Color::White;}
+    unsafe {cga_print::FG_COLOR = Color::LightGreen;}
+    let s1 = vec![S { a: 1, b: 2 }, S { a: 3, b: 4 }, S { a: 5, b: 6 }];
+    unsafe {cga_print::FG_COLOR = Color::White;}
     allocator::dump_free_list();
 
     println!("");
@@ -77,9 +77,9 @@ pub fn run () {
     println!("===========================");
     println!("");
 
-    unsafe {cga_print::fg_color = Color::LightRed;}
+    unsafe {cga_print::FG_COLOR = Color::LightRed;}
     drop(s1);
-    unsafe {cga_print::fg_color = Color::White;}
+    unsafe {cga_print::FG_COLOR = Color::White;}
     allocator::dump_free_list();
     
     println!("");

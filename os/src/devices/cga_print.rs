@@ -20,8 +20,8 @@ pub static WRITER: Mutex<Writer> = Mutex::new(Writer::new());
 /// Writer for writing formatted strings to the CGA screen
 pub struct Writer {}
 
-pub static mut bg_color: Color = Color::Black;
-pub static mut fg_color: Color = Color::White;
+pub static mut BG_COLOR: Color = Color::Black;
+pub static mut FG_COLOR: Color = Color::White;
 
 impl Writer {
     /// Create a new Writer object.
@@ -39,10 +39,10 @@ impl Write for Writer {
         for byte in s.bytes() {
             match byte {
                 // printable ASCII byte or newline
-                0x20..=0x7e | b'\n' => unsafe{cga.print_byte(byte, bg_color, fg_color, false)},
+                0x20..=0x7e | b'\n' => unsafe{cga.print_byte(byte, BG_COLOR, FG_COLOR, false)},
 
                 // not part of printable ASCII range
-                _ => unsafe{cga.print_byte(0xfe, bg_color, fg_color, false)},
+                _ => unsafe{cga.print_byte(0xfe, BG_COLOR, FG_COLOR, false)},
             }
         }
 

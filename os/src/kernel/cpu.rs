@@ -126,3 +126,10 @@ where F: FnOnce() -> R{
     enable_int_nested(ie);
     ret
 }
+
+#[inline]
+pub fn io_wait() {
+    unsafe {
+        asm!("rep insw", in("dx") 0x80, in("cx") 0);
+    }
+}

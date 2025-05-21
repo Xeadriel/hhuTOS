@@ -167,7 +167,7 @@ impl LinkedListAllocator {
     }
 
     pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
-        println!("list-alloc: size={}, align={}", layout.size(), layout.align());
+        // kprintln!("list-alloc: size={}, align={}", layout.size(), layout.align());
 
         // perform layout adjustments
         let (size, align) = LinkedListAllocator::size_align(layout);
@@ -188,7 +188,7 @@ impl LinkedListAllocator {
     }
 
     pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        println!("list-dealloc: size={}, align={}; ", layout.size(), layout.align());
+        // kprintln!("list-dealloc: size={}, align={}; ", layout.size(), layout.align());
 
         let (size, _) = LinkedListAllocator::size_align(layout);
 
