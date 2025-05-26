@@ -9,14 +9,14 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::{fmt, ptr};
-use core::arch::naked_asm;
+use core::arch::{asm, naked_asm};
 use core::fmt::Display;
 use core::sync::atomic::AtomicUsize;
 use crate::consts;
 use crate::consts::STACK_SIZE;
 use crate::kernel::coroutines::coroutine::Coroutine;
 use crate::kernel::cpu;
-use crate::kernel::threads::scheduler;
+use crate::kernel::threads::scheduler::{self, unlock_scheduler};
 use crate::kernel::threads::scheduler::get_scheduler;
 
 static THREAD_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -30,12 +30,30 @@ pub fn next_id() -> usize {
 unsafe extern "C" fn thread_start(stack_ptr: usize) {
     unsafe {
         naked_asm!(
-            ""
-            /* Hier muss Code eingefuegt werden */
-
+            "mov    rsp, rdi",
+            "call   {unlock_scheduler}",
+            "popfq",    
+            "pop    rbp",
+            "pop    rdi",
+            "pop    rsi",
+            "pop    rdx",
+            "pop    rcx",
+            "pop    rbx",
+            "pop    rax",
+            "pop    r15",
+            "pop    r14",
+            "pop    r13",
+            "pop    r12",
+            "pop    r11",
+            "pop    r10",
+            "pop    r9",
+            "pop    r8",
+            "ret",
+            unlock_scheduler = sym unlock_scheduler,
         )
     }
 }
+
 
 /// Low-level routine for switching to the next thread.
 /// `current_stack_ptr` is a pointer to `stack_ptr` of the next coroutine (where the rsp is saved).
@@ -44,12 +62,57 @@ unsafe extern "C" fn thread_start(stack_ptr: usize) {
 unsafe extern "C" fn thread_switch(current_stack_ptr: *mut usize, next_stack: usize) {
     unsafe {
         naked_asm!(
-            ""
-            /* Hier muss Code eingefuegt werden */
+            // Save callee-saved registers and rflags onto the current stack
+            "push   r8",
+            "push   r9",
+            "push   r10",
+            "push   r11",
+            "push   r12",
+            "push   r13",
+            "push   r14",
+            "push   r15",
+            "push   rax",
+            "push   rbx",
+            "push   rcx",
+            "push   rdx",
+            "push   rsi",
+            "push   rdi",
+            "push   rbp",
+            "pushfq",                        // Save rflags
+            
+            // Save current rsp to *current_stack_ptr
+            "mov    [rdi], rsp",            // rdi = current_stack_ptr
+            
+            "mov    rsp, rsi",
+            "call   {unlock_scheduler}",
+        
+            // Call unlock_scheduler now that rsp has changed
+            
+            "popfq",               
+            "pop    rbp",
+            "pop    rdi",
+            "pop    rsi",
+            "pop    rdx",
+            "pop    rcx",
+            "pop    rbx",
+            "pop    rax",
+            "pop    r15",
+            "pop    r14",
+            "pop    r13",
+            "pop    r12",
+            "pop    r11",
+            "pop    r10",
+            "pop    r9",
+            "pop    r8",
 
-        )
+            // Return to new thread
+            "ret",
+            
+            unlock_scheduler = sym unlock_scheduler,
+        );
     }
 }
+
 
 /// Represents a coroutine in the system.
 /// It contains the stack and the entry function.
@@ -89,17 +152,18 @@ impl Thread {
     /// This function is only once by the scheduler.
     /// The scheduler does further thread switching via `switch()`.
     pub fn start(&mut self) {
-
-        /* Hier muss Code eingefuegt werden */
-
+        unsafe {
+            kprintln!("Starting thread {}", self.id);
+            thread_start(self.stack_ptr);
+        }
     }
 
     /// Switch from the `current` thread to the `next` thread.
     /// This function is called by the scheduler to switch between threads.
     pub unsafe fn switch(current: *mut Thread, next: *mut Thread) {
-
-        /* Hier muss Code eingefuegt werden */
-
+        unsafe {
+            thread_switch(&mut (*current).stack_ptr, (*next).stack_ptr);
+        }
     }
 
     /// Get the ID of the thread.

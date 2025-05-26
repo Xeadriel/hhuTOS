@@ -28,8 +28,24 @@ fn next_id() -> usize {
 unsafe extern "C" fn coroutine_start(stack_ptr: usize) {
     unsafe {
         naked_asm!(
-            ""
-        /* Hier muss Code eingefuegt werden */
+            "mov    rsp, rdi",
+            "popfq",    
+            "pop    rbp",
+            "pop    rdi",
+            "pop    rsi",
+            "pop    rdx",
+            "pop    rcx",
+            "pop    rbx",
+            "pop    rax",
+            "pop    r15",
+            "pop    r14",
+            "pop    r13",
+            "pop    r12",
+            "pop    r11",
+            "pop    r10",
+            "pop    r9",
+            "pop    r8",
+            "ret",
 
         )
     }
@@ -42,7 +58,51 @@ unsafe extern "C" fn coroutine_start(stack_ptr: usize) {
 unsafe extern "C" fn coroutine_switch(current_stack_ptr: *mut usize, next_stack: usize) {
     unsafe {
         naked_asm!(
-            ""
+        // --- save context of the *current* thread ---
+            // push non‐volatile and volatile regs in reverse pop order
+            "push   r8",
+            "push   r9",
+            "push   r10",
+            "push   r11",
+            "push   r12",
+            "push   r13",
+            "push   r14",
+            "push   r15",
+            "push   rax",
+            "push   rbx",
+            "push   rcx",
+            "push   rdx",
+            "push   rsi",
+            "push   rdi",
+            "push   rbp",
+            "pushfq",               // push RFLAGS last
+
+            // store the full stack (with our pushed context) pointer
+            "mov    [rdi], rsp",    // *current_stack_ptr = rsp
+
+            // --- switch to the *next* thread’s stack ---
+            "mov    rsp, rsi",      // rsp = next_stack
+            
+            // --- restore context of the *next* thread ---
+            "popfq",                // restore RFLAGS
+            "pop    rbp",
+            "pop    rdi",
+            "pop    rsi",
+            "pop    rdx",
+            "pop    rcx",
+            "pop    rbx",
+            "pop    rax",
+            "pop    r15",
+            "pop    r14",
+            "pop    r13",
+            "pop    r12",
+            "pop    r11",
+            "pop    r10",
+            "pop    r9",
+            "pop    r8",
+
+            // resume execution where that thread last yielded
+            "ret",
         /* Hier muss Code eingefuegt werden */
 
         )
@@ -84,16 +144,16 @@ impl Coroutine {
     /// Once started, coroutines cannot be exited.
     /// May only be called once.
     pub fn start(&mut self) {
-        
-        /* Hier muss Code eingefuegt werden */
-        
+        unsafe {
+            coroutine_start(self.stack_ptr);
+        }
     }
 
     /// Switch to the next coroutine.
     pub fn switch(&mut self) {
-
-        /* Hier muss Code eingefuegt werden */
-
+        unsafe {
+            coroutine_switch(&mut self.stack_ptr, (*self.next).stack_ptr);
+        }
     }
     
     /// Get the id of the coroutine.
@@ -103,9 +163,7 @@ impl Coroutine {
 
     /// Set the next pointer of the coroutine.
     pub fn set_next(&mut self, next: &mut Coroutine) {
-
-        /* Hier muss Code eingefuegt werden */
-
+        self.next = next;
     }
 
     /// Prepare the stack of a newly created coroutine in a way that it can be used

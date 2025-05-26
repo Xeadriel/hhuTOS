@@ -5,6 +5,9 @@ pub fn getch() -> char {
    loop {
       let mut key = keyboard::get_key_buffer().wait_for_key();
       if key.valid() && key.get_ascii() != 0 {
+         if key.get_ascii() == 13 { // enter key
+             return '\n';
+         }
          return char::from_u32(key.get_ascii() as u32).unwrap();
       }
    }

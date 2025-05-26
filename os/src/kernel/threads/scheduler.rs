@@ -84,7 +84,6 @@ impl Scheduler {
     /// Register a new thread in the ready queue.
     pub fn ready(&self, thread: Box<Thread>) {
         let mut state = self.state.lock();
-        
         state.ready_queue.enqueue(thread);
     }
 
@@ -111,15 +110,44 @@ impl Scheduler {
 
     /// Yield the CPU and switch to the next thread in the ready queue.
     pub fn yield_cpu(&self) {
+        unsafe {
+            unlock_scheduler();
+        }
+        let mut state = self.state.lock();
+        
+        let mut current = state.active_thread.take().unwrap();
+        // kprint!("Switching from thread {} ", current);
+        let current_ptr: *mut Thread = current.as_mut();
+        
+        // Always enqueue the current thread
+        state.ready_queue.enqueue(current);
+        
+        // Dequeue the next thread. This will return the idle thread again if it's the only one.
+        let mut next = state.ready_queue.dequeue().unwrap();
+        
+        // kprintln!("to thread {}", next);
 
-        /* Hier muss Code eingefuegt werden */
+        let next_ptr: *mut Thread = next.as_mut();
+        state.active_thread = Some(next);
 
+        if current_ptr == next_ptr {
+            return;
+        }
+
+        unsafe {
+            Thread::switch(current_ptr, next_ptr);
+        }
     }
+
+
 
     /// Kill the thread with the given ID by removing it from the ready queue.
     pub fn kill(&self, to_kill_id: usize) {
 
-        /* Hier muss Code eingefuegt werden */
+        let mut state = self.state.lock();
+
+        // Remove the thread with the given ID from the ready queue
+        let removed = state.ready_queue.remove(|thread| thread.get_id() == to_kill_id);
 
     }
 }

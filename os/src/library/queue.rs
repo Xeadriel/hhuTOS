@@ -68,13 +68,36 @@ impl<T> LinkedQueue<T> {
     /// Returns true if an element was removed, false otherwise.
     /// `f` is a function that takes a reference to the data and returns true if it matches.
     pub fn remove<F>(&mut self, f: F) -> bool
-    where F: Fn(&T) -> bool
+    where
+        F: Fn(&T) -> bool,
     {
+        // Case 1: head matches
+        if let Some(ref node) = self.head {
+            if f(&node.data) {
+                self.head = self.head.take().and_then(|n| n.next);
+                return true;
+            }
+        }
 
-        /* Hier muss Code eingefuegt werden */
+        // Case 2: search the rest of the list
+        let mut current = self.head.as_mut();
+
+        while let Some(node) = current {
+            match node.next.as_mut() {
+                Some(next_node) if f(&next_node.data) => {
+                    node.next = next_node.next.take();
+                    return true;
+                }
+                _ => {
+                    current = node.next.as_mut();
+                }
+            }
+        }
 
         false
     }
+
+
 }
 
 impl<T: Display> Display for LinkedQueue<T> {
@@ -93,4 +116,31 @@ impl<T: Display> Display for LinkedQueue<T> {
 
         write!(w, "]")
     }
+}
+
+
+pub fn test_linked_queue() {
+    let mut q = LinkedQueue::new();
+
+    println!("Enqueuing 1, 2, 3");
+    q.enqueue(1);
+    q.enqueue(2);
+    q.enqueue(3);
+    println!("Queue: {}", q);
+
+    println!("Dequeuing: {:?}", q.dequeue());
+    println!("Queue: {}", q);
+
+    println!("Enqueuing 1");
+    q.enqueue(1);
+
+    println!("Queue: {}", q);
+
+    println!("Removing element == 3");
+    q.remove(|x| *x == 3);
+    println!("Queue: {}", q);
+
+    println!("Removing element == 100 (not present)");
+    let removed = q.remove(|x| *x == 100);
+    println!("Removed? {}, Queue: {}", removed, q);
 }
