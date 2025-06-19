@@ -11,7 +11,7 @@
 */
 
 use core::fmt::Write;
-use crate::{devices::cga_lock::CgaLock, kernel::cpu as cpu, library::mutex::Mutex};
+use crate::{kernel::cpu as cpu, library::mutex::Mutex};
 
 /// Global CGA instance, wrapped in a mutex wrapped in a custom struct,
 /// which tracks which thread currently has the lock,
