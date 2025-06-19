@@ -29,7 +29,7 @@ const PIC_COMMAND_INITIALIZE: u8 = 0x11; // Initialization command for PIC
 #[repr(u8)]
 /// Enumeration of all IRQs (Interrupt Request Lines).
 pub enum Irq {
-    Timer = 0x00,
+    Pit = 0x00,
     Keyboard = 0x01,
     Cascade = 0x02,
     Com2 = 0x03,
@@ -137,21 +137,36 @@ impl Pic {
     }
 
     /// Get the state (enabled/disabled) of an IRQ in the PIC.
-    pub fn status (&mut self, irq: Irq) -> bool {
+    // pub fn status (&mut self, irq: Irq) -> bool {
+    //     let irq_int = irq as usize;
+
+    //     unsafe {
+    //         if irq_int < 8 {
+    //             if (self.data1.inb() | (1 << irq_int)) == 1 {
+    //                 return true;
+    //             }
+    //             } else {
+    //                 if (self.data2.inb() | (1 << irq_int)) == 1 {
+    //                   return true;
+    //                 }
+    //             }
+    //     }
+    //     return false;
+    // }
+
+    pub fn status(&mut self, irq: Irq) -> bool {
         let irq_int = irq as usize;
 
         unsafe {
             if irq_int < 8 {
-                if (self.data1.inb() | (1 << irq_int)) == 1 {
-                    return true;
-                }
-                } else {
-                    if (self.data2.inb() | (1 << irq_int)) == 1 {
-                      return true;
-                    }
-                }
+                let mask = self.data1.inb();
+                return (mask & (1 << irq_int)) == 0;
+            } else {
+                let mask = self.data2.inb();
+                return (mask & (1 << (irq_int - 8))) == 0;
+            }
         }
-        return false;
     }
+
 
 }

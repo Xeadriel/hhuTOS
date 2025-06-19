@@ -13,6 +13,9 @@ use core::fmt::Display;
 use core::{fmt, ptr};
 use core::sync::atomic::AtomicUsize;
 use spin::{Mutex, Once};
+use crate::devices::cga::CGA;
+use crate::kernel::{allocator, cpu};
+use crate::kernel::interrupts::intdispatcher::INT_VECTORS;
 use crate::kernel::threads::idle_thread::idle_thread;
 use crate::kernel::threads::thread;
 use crate::kernel::threads::thread::Thread;
@@ -45,12 +48,14 @@ pub unsafe extern "C" fn unlock_scheduler() {
 struct SchedulerState {
     active_thread: Option<Box<Thread>>,
     ready_queue: LinkedQueue<Box<Thread>>,
+    initialized: bool,
 }
 
 /// Represents the scheduler.
 /// It is round-robin-based and uses a queue to manage the threads.
 pub struct Scheduler {
     state: Mutex<SchedulerState>,
+    active_thread_id: AtomicUsize,
 }
 
 impl Scheduler {
@@ -60,16 +65,55 @@ impl Scheduler {
         let state = SchedulerState {
             active_thread: Some(Thread::new(idle_thread)),
             ready_queue: LinkedQueue::new(),
+            initialized: false,
         };
         
-        Scheduler { state:  Mutex::new(state) }
+        Scheduler { state:  Mutex::new(state), active_thread_id: AtomicUsize::new(0)}
+    }
+
+    pub fn is_locked(&self) -> bool {
+        self.state.is_locked()
+    }
+
+    pub fn is_initialized(&self) -> bool {
+        self.state.lock().initialized
+    }
+
+    /// Prepare the current thread for blocking.
+    /// This functions disables interrupts and return the current thread,
+    /// as well as the return value from `cpu::disable_int_nested()`.
+    /// To complete the blocking operation call `switch_from_blocked_thread()`,
+    /// which will enable interrupts again and resume the scheduler.
+    pub fn prepare_block(&self) -> (Box<Thread>, bool) {
+        (self.state.lock().active_thread.take().unwrap(), cpu::disable_int_nested())
+    }
+
+    /// Complete a blocking operation begun with `prepare_block()`.
+    /// This resumes the scheduler and switches to the next thread in the ready queue.
+    pub unsafe fn switch_from_blocked_thread(&self, blocked_thread: *mut Thread, interrupts_enabled: bool) {
+        let mut state = self.state.lock();
+
+        // Dequeue next thread from the ready queue
+        let mut next = state.ready_queue.dequeue().unwrap();
+        let next_ptr: *mut Thread = next.as_mut();
+
+        // Store next as the active thread
+        self.active_thread_id.store(next.get_id(), core::sync::atomic::Ordering::SeqCst);
+        state.active_thread = Some(next);
+
+        // Thread switch: from blocked to next
+        unsafe {
+            Thread::switch(blocked_thread, next_ptr);
+        }
+
+        // After switch: restore interrupt state
+        cpu::enable_int_nested(interrupts_enabled);
+
     }
 
     /// Get the ID of the currently active thread.
     pub fn get_active_tid(&self) -> usize {
-        let state = self.state.lock();
-        
-        state.active_thread.as_ref().unwrap().get_id()
+        self.active_thread_id.load(core::sync::atomic::Ordering::SeqCst)
     }
 
     /// Start the scheduler.
@@ -77,6 +121,7 @@ impl Scheduler {
     pub fn schedule(&self) {
         let mut state = self.state.lock();
 
+        state.initialized = true;
         // The active thread is never None, since we must at least have the idle thread.
         state.active_thread.as_mut().unwrap().start();
     }
@@ -89,6 +134,10 @@ impl Scheduler {
 
     /// Terminate the current (calling) thread and switch to the next one.
     pub fn exit(&self) {
+        if CGA.is_held_by(self.get_active_tid()){
+            unsafe { CGA.force_unlock() };
+        }
+        
         let mut state = self.state.lock();
 
         // The active thread is never None, since we must at least have the idle thread.
@@ -98,8 +147,10 @@ impl Scheduler {
             
         // Set the dequeued thread as the active thread,
         // overwriting the current one, which we want to exit.
+        self.active_thread_id.store(next.get_id(), core::sync::atomic::Ordering::SeqCst);
         state.active_thread = Some(next);
         
+
         unsafe {
             // Switch to the next thread.
             // `current` still contains the old thread we want to exit,
@@ -110,26 +161,41 @@ impl Scheduler {
 
     /// Yield the CPU and switch to the next thread in the ready queue.
     pub fn yield_cpu(&self) {
+        if allocator::is_locked() {
+            // kprintln!("alloc fail");
+            return;
+        }
+        
         unsafe {
             unlock_scheduler();
         }
+        
         let mut state = self.state.lock();
-        
-        let mut current = state.active_thread.take().unwrap();
-        // kprint!("Switching from thread {} ", current);
+
+        // Only yield if the scheduler has already started
+        if !state.initialized {
+            // kprintln!("not init state");
+            return;
+        }
+
+        // sometimes active thread is temporarily None i dont know why
+        let Some(mut current) = state.active_thread.take() else {
+            return;
+        };
+
         let current_ptr: *mut Thread = current.as_mut();
-        
-        // Always enqueue the current thread
+
+        // Enqueue the current thread
         state.ready_queue.enqueue(current);
-        
-        // Dequeue the next thread. This will return the idle thread again if it's the only one.
+
+        // Dequeue the next thread
         let mut next = state.ready_queue.dequeue().unwrap();
-        
-        // kprintln!("to thread {}", next);
-
         let next_ptr: *mut Thread = next.as_mut();
+        
+        // No-op if the thread is switching to itself
+        self.active_thread_id.store(next.get_id(), core::sync::atomic::Ordering::SeqCst);
         state.active_thread = Some(next);
-
+        
         if current_ptr == next_ptr {
             return;
         }
@@ -137,7 +203,9 @@ impl Scheduler {
         unsafe {
             Thread::switch(current_ptr, next_ptr);
         }
+        
     }
+
 
 
 
@@ -146,9 +214,11 @@ impl Scheduler {
 
         let mut state = self.state.lock();
 
-        // Remove the thread with the given ID from the ready queue
-        let removed = state.ready_queue.remove(|thread| thread.get_id() == to_kill_id);
-
+        state.ready_queue.remove(|thread| thread.get_id() == to_kill_id);
+        
+        if CGA.is_held_by(to_kill_id){
+            unsafe { CGA.force_unlock() };
+        }
     }
 }
 

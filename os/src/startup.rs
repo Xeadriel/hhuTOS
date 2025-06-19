@@ -53,6 +53,9 @@ use user::aufgabe4::coroutine_demo;
 use user::aufgabe4::hello_world_thread;
 use user::aufgabe4::thread_demo;
 
+use crate::devices::pit;
+use crate::user::aufgabe4::thread_demo_a6;
+
 fn aufgabe1() {
     text_demo::run();
     println!("\nNow it's time to test the keyboard.");
@@ -92,11 +95,19 @@ fn aufgabe4() {
 }
 
 fn aufgabe4_part2() {
-    get_scheduler().ready(thread::Thread::new(hello_world_thread::hello_world));
+    // get_scheduler().ready(thread::Thread::new(hello_world_thread::hello_world));
     
     thread_demo::run();
 }
 
+fn aufgabe6() {
+    // counting up to 10000
+    //      - using the spinlock method takes ~10000 ticks
+    //      - using the new mutex method takes ~3400 ticks
+    //      - using the old mutex method takes ~10000 ticks
+    // the new method is awesome
+    thread_demo_a6::run();
+}
     
 
 #[unsafe(no_mangle)]
@@ -120,14 +131,16 @@ pub extern "C" fn startup() {
     keyboard::plugin();
     kprintln!("Keyboard plugged in.");
     
+    pit::plugin();
+    kprintln!("PIT initialized.");
+    
     cpu::enable_int();
     kprintln!("Interrupts enabled.");
-
-    aufgabe4_part2();
-    // aufgabe4();
+    
+    // aufgabe4_part2();
+    aufgabe6();
     
     get_scheduler().schedule();
-    kprintln!("Scheduler initialized.");   
     
 
     loop{}

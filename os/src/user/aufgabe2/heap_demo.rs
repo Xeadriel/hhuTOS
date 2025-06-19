@@ -5,6 +5,7 @@ use crate::devices::cga::{self, Color};
 use crate::devices::cga_print::{self, print};
 use crate::devices::keyboard;
 use crate::kernel::allocator;
+use crate::library::input::getch;
 
 pub fn run () {
 
@@ -34,7 +35,12 @@ pub fn run () {
 
     println!("");
     println!("Press <Return> to continue");
-    while 13 != keyboard::KEYBOARD.lock().key_hit().get_ascii(){}
+    loop {
+        let c = getch();   
+        if c == '\n' {
+            break;
+        }
+    }
     
     
     cga::CGA.lock().clear();
@@ -54,7 +60,12 @@ pub fn run () {
     
     println!("");
     println!("Press <Return> to continue");
-    while 13 != keyboard::KEYBOARD.lock().key_hit().get_ascii(){}
+    loop {
+        let c = getch();   
+        if c == '\n' {
+            break;
+        }
+    }
     
     
     cga::CGA.lock().clear();
@@ -69,7 +80,12 @@ pub fn run () {
 
     println!("");
     println!("Press <Return> to continue");
-    while 13 != keyboard::KEYBOARD.lock().key_hit().get_ascii(){}
+    loop {
+        let c = getch();   
+        if c == '\n' {
+            break;
+        }
+    }
     
     
     cga::CGA.lock().clear();
@@ -84,6 +100,11 @@ pub fn run () {
     
     println!("");
     println!("Press <Return> to continue");
-    while 13 != keyboard::KEYBOARD.lock().key_hit().get_ascii(){}
+    loop {
+        let c = getch();   
+        if c == '\n' {
+            break;
+        }
+    }
     cga::CGA.lock().clear();
 }

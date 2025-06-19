@@ -1,18 +1,22 @@
-/* ╔═════════════════════════════════════════════════════════════════════════╗
-   ║ Module: cga                                                             ║
-   ╟─────────────────────────────────────────────────────────────────────────╢
-   ║ Descr.: This module provides functions for doing output on the CGA text ║
-   ║         screen. It also supports a text cursor position stored in the   ║
-   ║         hardware using ports.                                           ║
-   ╟─────────────────────────────────────────────────────────────────────────╢
-   ║ Author: Michael Schoetter, Univ. Duesseldorf, 6.2.2024                  ║
-   ╚═════════════════════════════════════════════════════════════════════════╝
-*/
-use spin::Mutex;
-use crate::kernel::cpu as cpu;
 
-/// Global CGA instance, used for screen output in the whole kernel.
-/// Usage: let mut cga = cga::CGA.lock();
+/* ╔═════════════════════════════════════════════════════════════════════════╗
+║ Module: cga                                                             ║
+╟─────────────────────────────────────────────────────────────────────────╢
+║ Descr.: This module provides functions for doing output on the CGA text ║
+║         screen. It also supports a text cursor position stored in the   ║
+║         hardware using ports.                                           ║
+╟─────────────────────────────────────────────────────────────────────────╢
+║ Author: Michael Schoetter, Univ. Duesseldorf, 6.2.2024                  ║
+╚═════════════════════════════════════════════════════════════════════════╝
+*/
+
+use core::fmt::Write;
+use crate::{devices::cga_lock::CgaLock, kernel::cpu as cpu, library::mutex::Mutex};
+
+/// Global CGA instance, wrapped in a mutex wrapped in a custom struct,
+/// which tracks which thread currently has the lock,
+/// used for screen output in the whole kernel.
+/// Usage: let mut cga = cga::CGA.lock(thread_id);
 ///        cga.print_byte(b'X');
 pub static CGA: Mutex<CGA> = Mutex::new(CGA::new());
 
@@ -41,8 +45,8 @@ pub enum Color {
 pub const CGA_STD_ATTR: u8 = (Color::Black as u8) << 4 | (Color::White as u8);
 
 const CGA_BASE_ADDR: *mut u8 = 0xb8000 as *mut u8;
-const CGA_ROWS: usize = 25;
-const CGA_COLUMNS: usize = 80;
+pub const CGA_ROWS: usize = 25;
+pub const CGA_COLUMNS: usize = 80;
 
 const CGA_INDEX_PORT: u16 = 0x3d4; // select register
 const CGA_DATA_PORT: u16 = 0x3d5;  // read/write register
@@ -52,13 +56,19 @@ const CGA_LOW_BYTE_CMD: u8 = 15;   // cursor low byte
 pub struct CGA {
     index_port: cpu::IoPort,
     data_port: cpu::IoPort,
+    current_bg: Color,
+    current_fg: Color,
+    current_blink: bool,
 }
 
 impl CGA {
-    const fn new() -> CGA {
+    pub const fn new() -> CGA {
         CGA {
             index_port: cpu::IoPort::new(CGA_INDEX_PORT),
             data_port: cpu::IoPort::new(CGA_DATA_PORT),
+            current_bg: Color::Black,
+            current_fg: Color::White,
+            current_blink: false,
         }
     }
 
@@ -203,4 +213,20 @@ impl CGA {
         
         attr
     }
+}
+
+impl Write for CGA {
+        fn write_str(&mut self, s: &str) -> core::fmt::Result {
+            for byte in s.bytes() {
+                match byte {
+                // printable ASCII byte or newline
+                0x20..=0x7e | b'\n' => self.print_byte(byte, self.current_bg, self.current_fg, self.current_blink),
+
+                // not part of printable ASCII range
+                _ => self.print_byte(0xfe, self.current_bg, self.current_fg, self.current_blink),
+            }
+            }
+
+            Ok(())
+        }
 }

@@ -34,6 +34,10 @@ pub mod list;
 // static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new(HEAP_START, HEAP_SIZE));
 static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new(HEAP_START, HEAP_SIZE));
 
+pub fn is_locked() -> bool {
+    ALLOCATOR.inner.is_locked()
+}
+
 /// Initialize the heap allocator.
 pub fn init() {
     unsafe {

@@ -75,18 +75,25 @@ pub static INT_VECTORS: Mutex<IntVectors> = Mutex::new(IntVectors::new());
 /// Every interrupt is routed here, if not specified otherwise in the IDT.
 pub fn int_disp(vector: u8, stack_frame: InterruptStackFrame, error_code: Option<u64>) {
     /* Hier muss Code eingefuegt werden */
-    kprintln!("Interrupt: vector = {}", vector as u8);
+    // kprintln!("Interrupt: vector = {}", vector as u8);
     if INT_VECTORS.lock().report(vector) == true {
         return;
     }
 
     if (vector as u8) < 31 {
-        kprintln!("Panic: CPU exception nr = {}", vector as u8);
+        //print empty line to clear the screen
+        // for _ in 0..25 {
+        //     println!("");
+        // }
+        // println!("Panic: CPU exception nr = {}", vector as u8);
     } else {
-        kprintln!("Panic: Unknown Hardware interrupt nr = {}", vector as u8);
+        // for _ in 0..25 {
+        //     println!("");
+        // // }
+        // println!("Panic: Unknown Hardware interrupt nr = {}", vector as u8);
     }
-    kprintln!("CPU halted");
-    cpu::halt();
+    // kprintln!("CPU halted");
+    // cpu::halt();
 }
 
 /// The Interrupt vector map. Each ISR is registered in this map.

@@ -32,7 +32,7 @@ unsafe extern "C" fn thread_start(stack_ptr: usize) {
         naked_asm!(
             "mov    rsp, rdi",
             "call   {unlock_scheduler}",
-            "popfq",    
+            "popf",    
             "pop    rbp",
             "pop    rdi",
             "pop    rsi",
@@ -78,17 +78,17 @@ unsafe extern "C" fn thread_switch(current_stack_ptr: *mut usize, next_stack: us
             "push   rsi",
             "push   rdi",
             "push   rbp",
-            "pushfq",                        // Save rflags
+            "pushf",                        // Save rflags
             
             // Save current rsp to *current_stack_ptr
             "mov    [rdi], rsp",            // rdi = current_stack_ptr
-            
+            "mov rdi, rdx",
             "mov    rsp, rsi",
             "call   {unlock_scheduler}",
         
             // Call unlock_scheduler now that rsp has changed
             
-            "popfq",               
+            "popf",               
             "pop    rbp",
             "pop    rdi",
             "pop    rsi",
@@ -152,8 +152,8 @@ impl Thread {
     /// This function is only once by the scheduler.
     /// The scheduler does further thread switching via `switch()`.
     pub fn start(&mut self) {
+        cpu::disable_int(); // Disable interrupts during thread start
         unsafe {
-            kprintln!("Starting thread {}", self.id);
             thread_start(self.stack_ptr);
         }
     }

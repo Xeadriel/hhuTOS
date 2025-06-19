@@ -122,7 +122,7 @@ pub struct KeyboardISR {}
 impl ISR for KeyboardISR {
     fn trigger(&self) {
         
-        kprintln!("keyboard::trigger called!");
+        // kprintln!("keyboard::trigger called!");
         /* Hier muss Code eingefuegt werden */        
         let mut kb = KEYBOARD.lock();
         if let Some(key) = kb.key_hit_irq() {
