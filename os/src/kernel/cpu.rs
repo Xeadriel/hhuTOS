@@ -45,6 +45,36 @@ impl IoPort {
         }
         ret
     }
+
+    /// Write a 32-bit value to an I/O port
+    #[inline]
+    pub unsafe fn outdw(&mut self, value: u32) {
+        unsafe {
+            asm!(
+                "out dx, eax",
+                in("dx") self.port,
+                in("eax") value,
+                options(nomem, nostack, preserves_flags),
+            );
+        }
+    }
+    
+    /// Read a 32-bit value from an I/O port
+    #[inline]
+    pub unsafe fn indw(&mut self) -> u32 {
+        let value: u32;
+        unsafe {
+            asm!(
+                "in eax, dx",
+                in("dx") self.port,
+                out("eax") value,
+                options(nomem, nostack, preserves_flags),
+            );
+            value
+        }
+    }
+
+
 }
 
 /// Check if IE bit is set in RFLAGS
