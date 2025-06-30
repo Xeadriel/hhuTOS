@@ -5,7 +5,7 @@ use core::ops::{Deref, DerefMut};
 use core::ptr;
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use crate::kernel::cpu;
-use crate::kernel::threads::scheduler::{get_scheduler, unlock_scheduler};
+use crate::kernel::threads::scheduler::{get_scheduler, unlock_scheduler, SCHEDULER};
 use crate::kernel::threads::thread::Thread;
 use crate::library::queue::LinkedQueue;
 use crate::library::spinlock::Spinlock;
@@ -49,6 +49,16 @@ impl<T> Mutex<T> {
             None
         }
     }
+
+    /// Try to acquire the lock once without blocking.
+    pub fn try_lock_no_sched(&self) -> Option<MutexGuard<T>> {
+        // Attempt to acquire the lock using atomic compare-and-exchange.
+        if self.lock.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok() {
+            Some(MutexGuard { lock: self })
+        } else {
+            None
+        }
+    }
     
     /// Acquire the lock, blocking if necessary until it is available.
     /// This method will dequeue the current thread from the scheduler if the lock is already held
@@ -56,25 +66,28 @@ impl<T> Mutex<T> {
     /// Once the lock is available, the next thread in the `wait_queue` will be woken up
     /// so it can try to acquire the lock again.
     pub fn lock(&self) -> MutexGuard<T> {
-        loop {
-            if let Some(guard) = self.try_lock() {
-                return guard;
+        // has been initialized?
+        if !SCHEDULER.is_completed() {
+            while self.try_lock_no_sched().is_none() {
+                unsafe {
+                    asm!("pause", options(nomem, nostack, preserves_flags));
+                }
             }
-            
+            return MutexGuard { lock: self };
+        }
+
+        loop {
             unsafe {
                 unlock_scheduler();
             }
             let scheduler = get_scheduler();
-            
             // if scheduler not initialized, behave like spinlock
-            if !scheduler.is_initialized() {
-                while self.try_lock().is_none() {
-                    unsafe {
-                        asm!("pause", options(nomem, nostack, preserves_flags));
-                    }
-                }
-                return MutexGuard { lock: self };
+
+            if let Some(guard) = self.try_lock() {
+                return guard;
             }
+            
+            
             
             let (mut thread, interrupts_enabled) = scheduler.prepare_block();
             let thread_ptr: *mut Thread = thread.as_mut();
@@ -99,14 +112,15 @@ impl<T> Mutex<T> {
         self.owner.store(0, Ordering::Release); // Clear owner
         self.lock.store(false, Ordering::Release);
         
+        if !SCHEDULER.is_completed() {
+            return;
+        }
+
         unsafe {
             unlock_scheduler();
         }
         
         let scheduler = get_scheduler();
-        if !scheduler.is_initialized() {
-            return;
-        }
         
         let maybe_thread = {
             let mut queue = self.wait_queue.lock();

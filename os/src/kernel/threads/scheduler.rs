@@ -12,7 +12,8 @@ use alloc::vec::Vec;
 use core::fmt::Display;
 use core::{fmt, ptr};
 use core::sync::atomic::AtomicUsize;
-use spin::{Mutex, Once};
+use spin::{Once};
+use crate::library::spinlock::Spinlock;
 use crate::devices::cga::CGA;
 use crate::kernel::{allocator, cpu};
 use crate::kernel::interrupts::intdispatcher::INT_VECTORS;
@@ -22,7 +23,7 @@ use crate::kernel::threads::thread::Thread;
 use crate::library::queue::LinkedQueue;
 
 /// Global scheduler instance
-static SCHEDULER: Once<Scheduler> = Once::new();
+pub static SCHEDULER: Once<Scheduler> = Once::new();
 
 /// Global access to the scheduler.
 pub fn get_scheduler() -> &'static Scheduler {
@@ -54,7 +55,7 @@ struct SchedulerState {
 /// Represents the scheduler.
 /// It is round-robin-based and uses a queue to manage the threads.
 pub struct Scheduler {
-    state: Mutex<SchedulerState>,
+    state: Spinlock<SchedulerState>,
     active_thread_id: AtomicUsize,
 }
 
@@ -68,7 +69,7 @@ impl Scheduler {
             initialized: false,
         };
         
-        Scheduler { state:  Mutex::new(state), active_thread_id: AtomicUsize::new(0)}
+        Scheduler { state:  Spinlock::new(state), active_thread_id: AtomicUsize::new(0)}
     }
 
     pub fn is_locked(&self) -> bool {

@@ -12,6 +12,7 @@ use alloc::alloc::{GlobalAlloc, Layout};
 use core::{mem, ptr};
 use crate::kernel::allocator::bump::BumpAllocator;
 use crate::kernel::cpu as cpu;
+use crate::library::mutex::Mutex;
 
 /// Header of a free block in the list allocator.
 struct ListNode {
@@ -200,7 +201,7 @@ impl LinkedListAllocator {
 }
 
 // Trait required by the Rust runtime for heap allocations
-unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
+unsafe impl GlobalAlloc for Mutex<LinkedListAllocator> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         unsafe {
             self.lock().alloc(layout)

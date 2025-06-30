@@ -10,7 +10,8 @@ use alloc::boxed::Box;
 use nolock::queues::mpmc;
 use nolock::queues::mpmc::bounded::scq::{Receiver, Sender};
 
-use spin::{Mutex, Once};
+use spin::Once;
+use crate::library::mutex::Mutex;
 use crate::kernel::interrupts::isr::ISR;
 
 /// Represents the keyboard.

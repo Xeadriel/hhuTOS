@@ -4,7 +4,8 @@
 #include <ctype.h>
 #include <string.h>
 
-#define  INPUT_FILE   "bmp_hhu.c"
+#define  INPUT_FILE   "test.c"
+// #define  INPUT_FILE   "bmp_hhu.c"
 #include INPUT_FILE
 
 
@@ -25,14 +26,14 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    fprintf(f, "pub const WIDTH:u32  = %d;\n", hhu.width);
-    fprintf(f, "pub const HEIGHT:u32 = %d;\n", hhu.height);
-    fprintf(f, "pub const BPP:u32    = %d;\n", hhu.bytes_per_pixel);
+    fprintf(f, "pub const WIDTH:u32  = %d;\n", gimp_image.width);
+    fprintf(f, "pub const HEIGHT:u32 = %d;\n", gimp_image.height);
+    fprintf(f, "pub const BPP:u32    = %d;\n", gimp_image.bytes_per_pixel);
     fprintf(f, "\n");
-    fprintf(f, "pub const DATA: &[u8;%ld] = b\"", sizeof(hhu.pixel_data));
+    fprintf(f, "pub const DATA: &[u8;%ld] = b\"", sizeof(gimp_image.pixel_data));
 
-    for (int i=0; i< sizeof(hhu.pixel_data); i++)
-        fprintf(f, "\\x%02x", hhu.pixel_data[i]);
+    for (int i=0; i< sizeof(gimp_image.pixel_data); i++)
+        fprintf(f, "\\x%02x", gimp_image.pixel_data[i]);
 
     fprintf(f, "\";\n");
 

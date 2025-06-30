@@ -58,8 +58,11 @@ use crate::devices::pci::get_pci_bus;
 use crate::devices::pci::Command;
 use crate::devices::pit;
 use crate::kernel::cpu::IoPort;
+use crate::kernel::multiboot::FramebufferType;
+use crate::kernel::multiboot::MultibootInfo;
 use crate::user::aufgabe4::thread_demo_a6;
 use crate::user::aufgabe7::graphic_demo;
+use crate::user::the_lost_sword::the_lost_sword;
 
 fn aufgabe1() {
     text_demo::run();
@@ -118,7 +121,7 @@ fn aufgabe6() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn startup(multiboot_info: &MultibootInfo) {
-
+    
     /* Hier steht der existierende startup() Code bis `cpu::enable_interrupts()` */
     allocator::init();
     kprintln!("Heap Allocator initialized.");
@@ -220,12 +223,12 @@ pub extern "C" fn startup(multiboot_info: &MultibootInfo) {
                     framebuffer_info.height,
                     framebuffer_info.bpp
                 );
-
-                graphic_demo::run();
+                the_lost_sword::run();
             }
             FramebufferType::Text => {
 
                 /* Hier können Sie ihren existierenden Code, der auf dem CGA-Modus basiert aufrufen */
+                aufgabe6();
 
             }
         }
@@ -236,8 +239,9 @@ pub extern "C" fn startup(multiboot_info: &MultibootInfo) {
 
     }
 
+    // aufgabe3();
+    // cga::CGA.lock().clear();
     // aufgabe4_part2();
-    aufgabe6();
     
     get_scheduler().schedule();
 }

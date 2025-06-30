@@ -22,6 +22,8 @@ use crate::kernel::allocator::bump::BumpAllocator;
 use crate::kernel::allocator::list::LinkedListAllocator;
 
 use crate::consts::{HEAP_SIZE, HEAP_START};
+use crate::library::mutex::{Mutex, MutexGuard};
+// use spin::{Mutex, MutexGuard};
 
 pub mod bump;
 pub mod list;
@@ -32,10 +34,10 @@ pub mod list;
 // Define the allocator (which implements the 'GlobalAlloc' trait)
 #[global_allocator]
 // static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new(HEAP_START, HEAP_SIZE));
-static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new(HEAP_START, HEAP_SIZE));
+static ALLOCATOR: Mutex<LinkedListAllocator> = Mutex::new(LinkedListAllocator::new(HEAP_START, HEAP_SIZE));
 
 pub fn is_locked() -> bool {
-    ALLOCATOR.inner.is_locked()
+    ALLOCATOR.is_locked()
 }
 
 /// Initialize the heap allocator.
@@ -65,20 +67,18 @@ pub fn dump_free_list() {
     ALLOCATOR.lock().dump_free_list();
 }
 
-/// A wrapper around `spin::Mutex` to allow for trait implementations.
-/// Required for implementing `GlobalAlloc` in `bump.rs` and `list.rs`.
 pub struct Locked<A> {
-    inner: spin::Mutex<A>,
+    inner: Mutex<A>,
 }
 
 impl<A> Locked<A> {
     pub const fn new(inner: A) -> Self {
         Locked {
-            inner: spin::Mutex::new(inner),
+            inner: Mutex::new(inner),
         }
     }
 
-    pub fn lock(&self) -> spin::MutexGuard<A> {
+    pub fn lock(&self) -> MutexGuard<A> {
         self.inner.lock()
     }
 }

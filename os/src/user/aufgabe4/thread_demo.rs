@@ -46,6 +46,6 @@ pub fn run() {
     get_scheduler().ready(Thread::new(thread_entry));
     get_scheduler().ready(Thread::new(thread_entry));
     get_scheduler().ready(Thread::new(thread_entry));
-    // get_scheduler().ready(Thread::new(pcspk::zelda));
+    get_scheduler().ready(Thread::new(pcspk::zelda));
 
 }

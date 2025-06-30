@@ -46,6 +46,33 @@ impl IoPort {
         ret
     }
 
+
+    /// Write a word (two bytes) to a port
+    #[inline]
+    pub unsafe fn outw(&mut self, data: u16) {
+        unsafe {
+            asm!(
+            "out dx, ax",
+            in("dx") self.port,
+            in("ax") data,
+            );
+        }
+    }
+
+    /// Read a word (two bytes) from a port
+    #[inline]
+    pub unsafe fn inw(&mut self) -> u16 {
+        let ret: u16;
+        unsafe {
+            asm!(
+            "in ax, dx",
+            in("dx") self.port,
+            out("ax") ret,
+            );
+        }
+        ret
+    }
+
     /// Write a 32-bit value to an I/O port
     #[inline]
     pub unsafe fn outdw(&mut self, value: u32) {

@@ -16,7 +16,7 @@ extern crate spin;
 use crate::kernel::cpu;
 use crate::kernel::interrupts::InterruptStackFrame;
 use alloc::{boxed::Box, vec, vec::Vec};
-use spin::Mutex;
+use crate::library::spinlock::Spinlock;
 use crate::kernel::interrupts::idt::IDT_SIZE;
 use crate::kernel::interrupts::isr::ISR;
 
@@ -69,7 +69,7 @@ pub enum InterruptVector {
 }
 
 /// Global instance of the interrupt vector map.
-pub static INT_VECTORS: Mutex<IntVectors> = Mutex::new(IntVectors::new());
+pub static INT_VECTORS: Spinlock<IntVectors> = Spinlock::new(IntVectors::new());
 
 /// The main interrupt dispatcher.
 /// Every interrupt is routed here, if not specified otherwise in the IDT.
