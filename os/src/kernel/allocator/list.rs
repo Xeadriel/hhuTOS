@@ -70,19 +70,40 @@ impl LinkedListAllocator {
     }
 
     /// Adds the given free memory block 'addr' to the front of the free list.
-    unsafe fn add_free_block(&mut self, addr: usize, size: usize) {
-         // ensure that the freed block is capable of holding ListNode
-         assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
-         assert!(size >= mem::size_of::<ListNode>());
+    // unsafe fn add_free_block(&mut self, addr: usize, size: usize) {
+    //      // ensure that the freed block is capable of holding ListNode
+    //      assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
+    //      assert!(size >= mem::size_of::<ListNode>());
  
-         // create a new list node and append it at the start of the list
-         let mut node = ListNode::new(size);
-         node.next = self.head.next.take();
-         let node_ptr = addr as *mut ListNode;
-         unsafe {
-             node_ptr.write(node);
-             self.head.next = Some(&mut *node_ptr)
-         }
+    //      // create a new list node and append it at the start of the list
+    //      let mut node = ListNode::new(size);
+    //      node.next = self.head.next.take();
+    //      let node_ptr = addr as *mut ListNode;
+    //      unsafe {
+    //          node_ptr.write(node);
+    //          self.head.next = Some(&mut *node_ptr)
+    //      }
+    // }
+
+    unsafe fn add_free_block(&mut self, addr: usize, size: usize) {
+        assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
+        assert!(size >= mem::size_of::<ListNode>());
+
+        let mut node = ListNode::new(size);
+        let node_ptr = addr as *mut ListNode;
+
+        let mut current = &mut self.head;
+
+        while let Some(ref mut next) = current.next {
+            if next.start_addr() > addr {
+                break;
+            }
+            current = current.next.as_mut().unwrap();
+        }
+
+        node.next = current.next.take();
+        unsafe { node_ptr.write(node) };
+        current.next = Some(unsafe { &mut *node_ptr });
     }
 
     /// Search a free block with the given size and alignment and remove it from the list.
@@ -91,10 +112,10 @@ impl LinkedListAllocator {
         let mut current = &mut self.head;
         
         // look for a large enough memory block in linked list
-        while let Some(ref mut block) = current.next {
-            if let Ok(alloc_start) = LinkedListAllocator::check_block_for_alloc(&block, size, align) {
+        while let Some(ref mut next_block) = current.next {
+            if let Ok(alloc_start) = LinkedListAllocator::check_block_for_alloc(&next_block, size, align) {
                 // block suitable for allocation -> remove node from list
-                let next = block.next.take();
+                let next = next_block.next.take();
                 let ret = current.next.take();
                 current.next = next;
                 return ret;
@@ -167,9 +188,49 @@ impl LinkedListAllocator {
 
     }
 
+    /// Attempt to merge adjacent free blocks to reduce fragmentation.
+    pub fn defragment(&mut self) {
+        let mut current = &mut self.head;
+
+        while let Some(ref mut current_block) = current.next {
+            // SAFETY: We'll need raw pointers to manipulate the list safely.
+            let mut next_opt = current_block.next.take();
+
+            while let Some(next_block) = next_opt {
+                let current_end = current_block.end_addr();
+                let next_start = next_block.start_addr();
+
+                if current_end == next_start {
+                    // Merge current_block and next_block
+                    current_block.size += next_block.size;
+                    // Move to the next node of the now-merged next_block
+                    next_opt = next_block.next.take();
+                } else {
+                    // Not adjacent, re-link and move forward
+                    current_block.next = Some(next_block);
+                    break;
+                }
+            }
+
+            // Move to the next node in the (possibly modified) list
+            current = current_block;
+        }
+    }
+
     pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
         // kprintln!("list-alloc: size={}, align={}", layout.size(), layout.align());
+        let result = unsafe { self.try_alloc(layout) };
+        
+        if result.is_null() {
+            self.defragment();
+        } else {
+            return result;
+        }
 
+        return unsafe { self.try_alloc(layout) };
+    }
+
+    unsafe fn try_alloc(&mut self, layout: Layout) -> *mut u8 {
         // perform layout adjustments
         let (size, align) = LinkedListAllocator::size_align(layout);
 

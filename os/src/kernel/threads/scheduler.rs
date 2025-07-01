@@ -143,6 +143,7 @@ impl Scheduler {
 
         // The active thread is never None, since we must at least have the idle thread.
         let mut current = state.active_thread.take().unwrap();
+        let current_ptr: *mut Thread = current.as_mut();
         // The idle thread never exits, so there must be at least one thread in the queue.
         let next = state.ready_queue.dequeue().unwrap();
             
@@ -156,7 +157,8 @@ impl Scheduler {
             // Switch to the next thread.
             // `current` still contains the old thread we want to exit,
             // while `state.active_thread` contains the next one.
-            Thread::switch(current.as_mut(), state.active_thread.as_mut().unwrap().as_mut());
+            drop(current);
+            Thread::switch(current_ptr, state.active_thread.as_mut().unwrap().as_mut());
         }
     }
 
