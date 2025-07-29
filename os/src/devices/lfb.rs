@@ -1,6 +1,6 @@
 use alloc::string::ToString;
 use spin::Once;
-use crate::devices::font_8x8;
+use crate::devices::{font_8x8, pit};
 use crate::library::mutex::Mutex;
 
 /// Global Linear Framebuffer (LFB) instance.
@@ -45,6 +45,7 @@ pub const BLUE: u32 = color(0, 0, 170);
 pub const MAGENTA: u32 = color(170, 0, 170);
 pub const CYAN: u32 = color(0, 170, 170);
 pub const WHITE: u32 = color(170, 170, 170);
+pub const TRUE_WHITE: u32 = color(255, 255, 255);
 
 // HHU primary colors
 pub const HHU_BLUE: u32 = color(0, 106, 179);
@@ -91,7 +92,7 @@ impl LFB {
     /// Create a new Linear Framebuffer (LFB) instance.
     const fn new(addr: *mut u8, pitch: u32, width: u32, height: u32, bpp: u8) -> LFB {
         if bpp != 32 {
-            panic!("Only 32-bit per pixel (ARGB) format is supported for LFB");
+            panic!("Only 32-bit per pixel (RGBA) format is supported for LFB");
         }
         
         LFB { addr, pitch, width, height }
@@ -169,6 +170,107 @@ impl LFB {
         }
     }
 
+    /// Draw a bitmap image at the specified (x, y) coordinates with the given width and height.
+    pub fn draw_bitmap_slowly(&mut self, x: u32, y: u32, width: u32, height: u32, bitmap: &[u8], delay: usize) {
+        let draw_height = if y + height > self.height {
+            self.height - y
+        } else {
+            height
+        };
+        
+        let draw_width = if x + width > self.width {
+            self.width - x
+        } else {
+            width
+        };
+
+        let xpos: u32 = x;
+        let ypos: u32 = y;
+
+        for y in 0..draw_height {
+            for x in 0..draw_width {
+                let index = ((y * width + x) * 3) as usize;
+                let red = bitmap[index];
+                let green = bitmap[index + 1];
+                let blue = bitmap[index + 2];
+
+                unsafe {
+                    self.draw_pixel_unchecked(xpos + x, ypos + y, color(red, green, blue));
+                }
+            }
+            pit::wait(delay);
+        }
+    }
+
+    /// Draw a bitmap image in RGBA8888 format with alpha blending at (x, y).
+    pub fn draw_bitmap_rgba(&mut self, x: u32, y: u32, width: u32, height: u32, bitmap: &[u8]) {
+        let draw_height = core::cmp::min(height, self.height.saturating_sub(y));
+        let draw_width = core::cmp::min(width, self.width.saturating_sub(x));
+
+        let xpos = x;
+        let ypos = y;
+
+        for row in 0..draw_height {
+            for col in 0..draw_width {
+                let index = ((row * width + col) * 4) as usize;
+
+                let red   = bitmap[index + 0] as u32;
+                let green = bitmap[index + 1] as u32;
+                let blue  = bitmap[index + 2] as u32;
+                let alpha = bitmap[index + 3] as u32;
+
+                let px = xpos + col;
+                let py = ypos + row;
+
+                if alpha == 0 {
+                    continue; // fully transparent
+                } else if alpha == 255 {
+                    // fully opaque — fast path
+                    unsafe {
+                        self.draw_pixel_unchecked(px, py, color(red as u8, green as u8, blue as u8));
+                    }
+                } else {
+                    // semi-transparent — do blending
+                    let (r_dst, g_dst, b_dst) = self.get_pixel_rgb(px, py);
+
+                    // blend each channel
+                    let r = ((alpha * red + (255 - alpha) * r_dst as u32) / 255) as u8;
+                    let g = ((alpha * green + (255 - alpha) * g_dst as u32) / 255) as u8;
+                    let b = ((alpha * blue + (255 - alpha) * b_dst as u32) / 255) as u8;
+
+                    unsafe {
+                        self.draw_pixel_unchecked(px, py, color(r, g, b));
+                    }
+                }
+            }
+        }
+    }
+
+    /// Returns (r, g, b) at a pixel on screen
+    pub fn get_pixel_rgb(&self, x: u32, y: u32) -> (u8, u8, u8) {
+        let raw = self.get_pixel(x, y); // assumes 0xRRGGBB format
+        let r = ((raw >> 16) & 0xFF) as u8;
+        let g = ((raw >> 8) & 0xFF) as u8;
+        let b = (raw & 0xFF) as u8;
+        (r, g, b)
+    }
+
+    /// Read the pixel value at (x, y) as a 32-bit ARGB color.
+    /// Returns 0 (black) if out of bounds.
+    pub fn get_pixel(&self, x: u32, y: u32) -> u32 {
+        if x >= self.width || y >= self.height {
+            return 0;
+        }
+
+        let offset = (y * self.pitch + x * 4) as usize;
+
+        unsafe {
+            let pixel_ptr = self.addr.add(offset) as *const u32;
+            *pixel_ptr
+        }
+    }
+
+
     /// Get the pixel data for a character from the font data.
     fn get_char_pixels(c: char) -> &'static [u8] {
         let char_mem_size = (font_8x8::CHAR_WIDTH + (8 >> 1)) / 8 * font_8x8::CHAR_HEIGHT;
@@ -217,6 +319,44 @@ impl LFB {
             }
 
             current_char_xpos += char_width;
+        }
+    }
+
+    /// Draw a string at the specified (x, y) coordinates with the given color with a given delay between each character.
+    pub fn draw_str_slowly(&mut self, x: u32, y: u32, color: u32, str: &str, delay: usize) {
+        let char_width  = font_8x8::CHAR_WIDTH;
+        let char_height = font_8x8::CHAR_HEIGHT;
+        let width_byte = if char_width % 8 == 0 {
+            char_width / 8
+        } else {
+            char_width / 8 + 1
+        };
+
+        let mut current_char_xpos = x;
+
+        for c in str.chars() {
+            let char_pixels = LFB::get_char_pixels(c);
+            let mut pixel_index = 0;
+            
+            for y_offset in 0..char_height {
+                let mut xpos = current_char_xpos;
+                let ypos = y + y_offset;
+
+                for byte in 0..width_byte {
+                    for bit in (0..8).rev() {
+                        if ((1 << bit) & char_pixels[pixel_index]) != 0 {
+                            self.draw_pixel(xpos, ypos, color);
+                        }
+
+                        xpos += 1;
+                    }
+                }
+
+                pixel_index += 1;
+            }
+
+            current_char_xpos += char_width;
+            pit::wait(delay);
         }
     }
 }

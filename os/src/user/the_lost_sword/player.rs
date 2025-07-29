@@ -1,4 +1,4 @@
-use crate::{devices::lfb::get_lfb, kernel::allocator::dump_free_list, library::input::{get_last_ch, getch}, user::the_lost_sword::{heart_sprite, player_sprite, sound_effects, sword_down, sword_left, sword_right, sword_up}};
+use crate::{devices::{lfb::get_lfb, pit}, library::input::{get_last_ch, getch}, user::the_lost_sword::{flamefist_down, flamefist_left, flamefist_right, flamefist_up, heart_sprite, player_sprite, sound_effects, sword_down, sword_left, sword_right, sword_up}};
 
 enum Direction {
     UP,
@@ -15,6 +15,8 @@ pub struct Player {
     pub attack_timer: isize,
     pub attack_direction: Direction,
     pub attack_rect: (isize, isize, isize, isize),
+    pub flame_fist_count: usize,
+    flame_attack_size: (isize, isize),
 }
 
 const MOVEMENT_SPEED: isize = 10;
@@ -30,7 +32,9 @@ impl Player {
             hit_timer: 0,
             attack_timer: 0,
             attack_direction: Direction::NONE,
-            attack_rect: (-10, -10, -15, -15) // (x1, y1, x2, y2) absolute coordinates,upper left corner, lower right corner
+            attack_rect: (-10, -10, -15, -15), // (x1, y1, x2, y2) absolute coordinates,upper left corner, lower right corner
+            flame_fist_count: 0,
+            flame_attack_size: (48, 64) // (width, height) size information for rectangle, upper left corner, lower right corner
         }
     }
 
@@ -62,22 +66,38 @@ impl Player {
         self.attack_rect
     }
 
-    pub fn attack(&self, direction: Direction) {
-        match direction {
-            Direction::UP => {
-                
-            }
-            Direction::DOWN => {
-                
-            }
-            Direction::LEFT => {
-                
-            }
-            Direction::RIGHT => {
-                
-            }
-            _ => {}
-        }
+    pub fn get_flame_attack_rects(&self) -> [(isize, isize, isize, isize); 4] {
+        let mut rects = [(0, 0, 0, 0); 4];
+        
+        // up
+        let mut x1 = self.x; 
+        let mut y1 = self.y - player_sprite::HEIGHT as isize;
+        let mut x2 = self.x + self.flame_attack_size.0;
+        let mut y2 = self.y + self.flame_attack_size.1;
+        rects[0] = (x1, y1, x2, y2);
+
+        // down
+        x1 = self.x;
+        y1 = self.y + player_sprite::HEIGHT as isize;
+        x2 = self.x + self.flame_attack_size.0;
+        y2 = self.y + player_sprite::HEIGHT as isize + self.flame_attack_size.1;
+        rects[1] = (x1, y1, x2, y2);    
+
+        // left
+        x1 = self.x - player_sprite::WIDTH as isize;
+        y1 = self.y;
+        x2 = self.x - player_sprite::WIDTH as isize + self.flame_attack_size.0;
+        y2 = self.y + self.flame_attack_size.1;
+        rects[2] = (x1, y1, x2, y2);
+        
+        // right
+        x1 = self.x + player_sprite::WIDTH as isize;
+        y1 = self.y;
+        x2 = self.x + player_sprite::WIDTH as isize + self.flame_attack_size.0;
+        y2 = self.y + self.flame_attack_size.1;
+        rects[3] = (x1, y1, x2, y2);
+        
+        rects
     }
 
     pub fn process(&mut self, delta: isize) {
@@ -163,26 +183,34 @@ impl Player {
                     'j' => {
                         self.attack_timer = ATTACK_SPEED;
                         self.attack_direction = Direction::LEFT;
-                        self.attack(Direction::LEFT);
                         sound_effects::play(sound_effects::SoundEffect::SwordSound);
                     }
                     'l' => {
                         self.attack_timer = ATTACK_SPEED;
                         self.attack_direction = Direction::RIGHT;
-                        self.attack(Direction::RIGHT);
                         sound_effects::play(sound_effects::SoundEffect::SwordSound);
                     }
                     'k' => {
                         self.attack_timer = ATTACK_SPEED;
                         self.attack_direction = Direction::DOWN;
-                        self.attack(Direction::DOWN);
                         sound_effects::play(sound_effects::SoundEffect::SwordSound);
                     }
                     'i' => {
                         self.attack_timer = ATTACK_SPEED;
                         self.attack_direction = Direction::UP;
-                        self.attack(Direction::UP);
                         sound_effects::play(sound_effects::SoundEffect::SwordSound);
+                    }
+                    'f' => {
+                        self.flame_fist_count += 1;
+                        sound_effects::play_no_thread(sound_effects::SoundEffect::FlameFist);
+                        let x = self.x;
+                        let y = self.y;
+                        lfb.draw_bitmap_rgba((x - 6) as u32, (y - 48) as u32, flamefist_up::WIDTH, flamefist_up::HEIGHT, flamefist_up::DATA);
+                        lfb.draw_bitmap_rgba((x - 6) as u32, (y + 64) as u32, flamefist_down::WIDTH, flamefist_down::HEIGHT, flamefist_down::DATA);
+                        lfb.draw_bitmap_rgba((x - 48) as u32, (y) as u32, flamefist_left::WIDTH, flamefist_left::HEIGHT, flamefist_left::DATA);
+                        lfb.draw_bitmap_rgba((x + 48) as u32, (y) as u32, flamefist_right::WIDTH, flamefist_right::HEIGHT, flamefist_right::DATA);
+                        
+                        pit::wait(1000);
                     }
                     _ => {}
                 }

@@ -1,4 +1,4 @@
-use crate::{devices::lfb::get_lfb, library::input::{get_last_ch, getch}, user::the_lost_sword::{player_sprite, rng::RNG, slime, slime_sprite, sound_effects, sword_down, sword_left, sword_right, sword_up}};
+use crate::{devices::lfb::get_lfb, library::input::{get_last_ch, getch}, user::the_lost_sword::{drag_tul_heart, drag_tul_sprite, player_sprite, rng::RNG, slime, slime_sprite, sound_effects, sword_down, sword_left, sword_right, sword_up}};
 
 enum Direction {
     UP,
@@ -7,7 +7,7 @@ enum Direction {
     RIGHT,
     NONE
 }
-pub struct Slime {
+pub struct DragTul {
     pub x: isize,
     pub y: isize,
     pub hp: usize,
@@ -17,26 +17,26 @@ pub struct Slime {
 }
 
 
-const MOVEMENT_SPEED: isize = 10;
+const MOVEMENT_SPEED: isize = 20;
 const DAMAGE_GRACE_PERIOD: isize = 500; // miliseconds
 const ATTACK_SPEED: i32 = 500; // miliseconds
 const MOVEMENT_COOLDOWN: isize = 1000; // miliseconds
 
-impl Slime {
+impl DragTul {
     pub fn new() -> Self {
         Self {
             x: 0,
             y: 0,
-            hp: 3,
+            hp: 8,
             hit_timer: 0,
             move_timer: MOVEMENT_COOLDOWN,
-            attack_rect: (0, 0, 48, 48), // (x1, y1, x2, y2) absolute coordinates,upper left corner, lower right corner
+            attack_rect: (0, 0, drag_tul_sprite::WIDTH as isize, drag_tul_sprite::HEIGHT as isize), // (x1, y1, x2, y2) absolute coordinates,upper left corner, lower right corner
         }
     }
 
     pub fn do_damage_check(&mut self, attack_rect : (isize, isize, isize, isize), damage : usize) -> bool{
         let (x1, y1, x2, y2) = attack_rect;
-        let (x11, y11, x22, y22) = (self.x, self.y, self.x + slime_sprite::WIDTH as isize, self.y + slime_sprite::HEIGHT as isize);
+        let (x11, y11, x22, y22) = (self.x, self.y, self.x + drag_tul_sprite::WIDTH as isize, self.y + drag_tul_sprite::HEIGHT as isize);
         if x11 <= x2 && x22 >= x1 && y11 <= y2 && y22 >= y1 {
             self.take_damage(damage);
             return true;
@@ -98,12 +98,20 @@ impl Slime {
                 self.y = 600 - 64 - MOVEMENT_SPEED;
             }
         }
-
-
         
+        {
+            let mut lfb = get_lfb().lock();
+            lfb.draw_bitmap_rgba(self.x as u32, self.y as u32, drag_tul_sprite::WIDTH, drag_tul_sprite::HEIGHT, drag_tul_sprite::DATA);
+        }
 
+        self.draw_health();       
+    }
+
+    fn draw_health(&self) {
         let mut lfb = get_lfb().lock();
-        lfb.draw_bitmap(self.x as u32, self.y as u32, slime_sprite::WIDTH, slime_sprite::HEIGHT, slime_sprite::DATA);
-            
+        
+        for i  in 0..self.hp {
+            lfb.draw_bitmap_rgba(600 + i as u32 * 24, 566 as u32, drag_tul_heart::WIDTH, drag_tul_heart::HEIGHT, drag_tul_heart::DATA);
+        }
     }
 }

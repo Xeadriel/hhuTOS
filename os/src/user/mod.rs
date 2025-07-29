@@ -3,3 +3,4 @@ pub mod aufgabe2;
 pub mod aufgabe4;
 pub mod aufgabe7;
 pub mod the_lost_sword;
+pub mod text_mode_demo;

@@ -89,7 +89,7 @@ impl ISR for TimerISR {
         let current_time = SYSTEM_TIME.fetch_add(1, core::sync::atomic::Ordering::Relaxed) + 1;
         
         unsafe { INT_VECTORS.force_unlock() };
-        // get_scheduler().yield_cpu(); 
+
         if current_time % 10 == 0 {
             get_scheduler().yield_cpu(); 
         }

@@ -8,6 +8,11 @@ pub fn getch() -> char {
          if key.get_ascii() == 13 { // enter key
              return '\n';
          }
+
+         if key.get_ascii() == 8 { // backspace key
+             return '\x08';
+         }
+
          return char::from_u32(key.get_ascii() as u32).unwrap();
       }
    }
@@ -20,6 +25,10 @@ pub fn get_last_ch() -> char {
          if key.get_ascii() == 13 { // enter key
              return '\n';
          }
+         if key.get_ascii() == 8 { // backspace key
+             return '\x08';
+         }
+
          return char::from_u32(key.get_ascii() as u32).unwrap();
       }
    }

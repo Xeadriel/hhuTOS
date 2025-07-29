@@ -60,8 +60,10 @@ use crate::devices::pit;
 use crate::kernel::cpu::IoPort;
 use crate::kernel::multiboot::FramebufferType;
 use crate::kernel::multiboot::MultibootInfo;
+use crate::kernel::threads::scheduler;
 use crate::user::aufgabe4::thread_demo_a6;
 use crate::user::aufgabe7::graphic_demo;
+use crate::user::text_mode_demo;
 use crate::user::the_lost_sword::the_lost_sword;
 
 fn aufgabe1() {
@@ -226,10 +228,9 @@ pub extern "C" fn startup(multiboot_info: &MultibootInfo) {
                 the_lost_sword::run();
             }
             FramebufferType::Text => {
-
                 /* Hier können Sie ihren existierenden Code, der auf dem CGA-Modus basiert aufrufen */
-                aufgabe6();
-
+                 
+                text_mode_demo::text_mode_demo::run();
             }
         }
     } else {
@@ -239,11 +240,6 @@ pub extern "C" fn startup(multiboot_info: &MultibootInfo) {
 
     }
 
-    // aufgabe3();
-    // cga::CGA.lock().clear();
-    // aufgabe4_part2();
-    
-    get_scheduler().schedule();
 }
 
 #[panic_handler]
