@@ -209,6 +209,7 @@ impl Player {
                         lfb.draw_bitmap_rgba((x - 6) as u32, (y + 64) as u32, flamefist_down::WIDTH, flamefist_down::HEIGHT, flamefist_down::DATA);
                         lfb.draw_bitmap_rgba((x - 48) as u32, (y) as u32, flamefist_left::WIDTH, flamefist_left::HEIGHT, flamefist_left::DATA);
                         lfb.draw_bitmap_rgba((x + 48) as u32, (y) as u32, flamefist_right::WIDTH, flamefist_right::HEIGHT, flamefist_right::DATA);
+                        lfb.flush();
                         
                         pit::wait(1000);
                     }

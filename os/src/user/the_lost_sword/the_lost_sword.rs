@@ -49,16 +49,14 @@ fn game_loop() {
     let mut enemies: Vec<Slime> = Vec::new();
     
     let mut last_time = pit::get_system_time();
-    let mut background_draw_timer: isize = 0;
     
-    let mut game_state = GameState::Victory;
+    let mut game_state = GameState::TitleScreen;
     let mut current_state_initialized = false;
     let mut jingle_played = false; //music at level start
 
     loop {
         let delta = (pit::get_system_time() - last_time) as isize;
         last_time = pit::get_system_time();
-        background_draw_timer -= delta;
         
         match game_state {
             GameState::TitleScreen => {
@@ -97,11 +95,9 @@ fn game_loop() {
                     enemies.push(slime);
                 }
                 
-                if background_draw_timer <= 0 { // reduces flickering a little, implementing double/triple buffering would be better but I have no time for that
-                    background_draw_timer = DRAW_COOLDOWN;
+                {
                     let mut lfb = get_lfb().lock();
                     lfb.draw_bitmap(0, 0, grass::WIDTH, grass::HEIGHT, grass::DATA);
-                    // lfb.draw_bitmap_rgba(30, 30, test::WIDTH, test::HEIGHT, test::DATA);
                 }
                 
                 
@@ -138,6 +134,10 @@ fn game_loop() {
                     }
 
                     if jingle_played == false {
+                        // single draw call
+                        {
+                            get_lfb().lock().flush();
+                        }
                         play_no_thread(SoundEffect::SwitchSceneTheme);
                         jingle_played = true;
                     }
@@ -170,8 +170,7 @@ fn game_loop() {
                     enemies.push(slime);
                 }
 
-                if background_draw_timer <= 0 { // reduces flickering a little, implementing double/triple buffering would be better but I have no time for that
-                    background_draw_timer = DRAW_COOLDOWN;
+                {
                     let mut lfb = get_lfb().lock();
                     lfb.draw_bitmap(0, 0, grass::WIDTH, grass::HEIGHT, grass::DATA);
                 }
@@ -210,6 +209,10 @@ fn game_loop() {
                     }
 
                     if jingle_played == false {
+                        // single draw call
+                        {
+                            get_lfb().lock().flush();
+                        }
                         play_no_thread(SoundEffect::SwitchSceneTheme);
                         jingle_played = true;
                     }
@@ -244,8 +247,7 @@ fn game_loop() {
                     enemies.push(slime);
                 }
 
-                if background_draw_timer <= 0 { // reduces flickering a little, implementing double/triple buffering would be better but I have no time for that
-                    background_draw_timer = DRAW_COOLDOWN;
+                {
                     let mut lfb = get_lfb().lock();
                     lfb.draw_bitmap(0, 0, grass::WIDTH, grass::HEIGHT, grass::DATA);
                 }
@@ -284,6 +286,10 @@ fn game_loop() {
                     }
 
                     if jingle_played == false {
+                        // single draw call
+                        {
+                            get_lfb().lock().flush();
+                        }
                         play_no_thread(SoundEffect::SwitchSceneTheme);
                         jingle_played = true;
                     }
@@ -299,8 +305,8 @@ fn game_loop() {
                     jingle_played = false;
                     story.play_flame_fist_training1();
                 }
-                if background_draw_timer <= 0 { // reduces flickering a little, implementing double/triple buffering would be better but I have no time for that
-                    background_draw_timer = DRAW_COOLDOWN;
+                
+                {
                     let mut lfb = get_lfb().lock();
                     lfb.draw_bitmap(0, 0, grass::WIDTH, grass::HEIGHT, grass::DATA);
                 }
@@ -347,8 +353,7 @@ fn game_loop() {
                     enemies.push(slime);
                 }
 
-                if background_draw_timer <= 0 { // reduces flickering a little, implementing double/triple buffering would be better but I have no time for that
-                    background_draw_timer = DRAW_COOLDOWN;
+                {
                     let mut lfb = get_lfb().lock();
                     lfb.draw_bitmap(0, 0, dungeon::WIDTH, dungeon::HEIGHT, dungeon::DATA);
                     lfb.draw_bitmap(400, 0, dungeon::WIDTH, dungeon::HEIGHT, dungeon::DATA);
@@ -395,6 +400,10 @@ fn game_loop() {
                     }
 
                     if jingle_played == false {
+                        // single draw call
+                        {
+                            get_lfb().lock().flush();
+                        }
                         play_no_thread(SoundEffect::SwitchSceneTheme);
                         jingle_played = true;
                     }
@@ -434,8 +443,7 @@ fn game_loop() {
                     enemies.push(slime);
                 }
 
-                if background_draw_timer <= 0 { // reduces flickering a little, implementing double/triple buffering would be better but I have no time for that
-                    background_draw_timer = DRAW_COOLDOWN;
+                {
                     let mut lfb = get_lfb().lock();
                     lfb.draw_bitmap(0, 0, dungeon::WIDTH, dungeon::HEIGHT, dungeon::DATA);
                     lfb.draw_bitmap(400, 0, dungeon::WIDTH, dungeon::HEIGHT, dungeon::DATA);
@@ -482,6 +490,10 @@ fn game_loop() {
                     }
 
                     if jingle_played == false {
+                        // single draw call
+                        {
+                            get_lfb().lock().flush();
+                        }
                         play_no_thread(SoundEffect::SwitchSceneTheme);
                         jingle_played = true;
                     }
@@ -526,8 +538,7 @@ fn game_loop() {
                     enemies.push(slime);
                 }
 
-                if background_draw_timer <= 0 { // reduces flickering a little, implementing double/triple buffering would be better but I have no time for that
-                    background_draw_timer = DRAW_COOLDOWN;
+                {
                     let mut lfb = get_lfb().lock();
                     lfb.draw_bitmap(0, 0, dungeon::WIDTH, dungeon::HEIGHT, dungeon::DATA);
                     lfb.draw_bitmap(400, 0, dungeon::WIDTH, dungeon::HEIGHT, dungeon::DATA);
@@ -574,6 +585,10 @@ fn game_loop() {
                     }
 
                     if jingle_played == false {
+                        // single draw call
+                        {
+                            get_lfb().lock().flush();
+                        }
                         play_no_thread(SoundEffect::SwitchSceneTheme);
                         jingle_played = true;
                     }
@@ -625,8 +640,7 @@ fn game_loop() {
                     dragtul.y = 200;
                 }
 
-                if background_draw_timer <= 0 { // reduces flickering a little, implementing double/triple buffering would be better but I have no time for that
-                    background_draw_timer = DRAW_COOLDOWN;
+                {
                     let mut lfb = get_lfb().lock();
                     lfb.draw_bitmap(0, 0, dungeon::WIDTH, dungeon::HEIGHT, dungeon::DATA);
                     lfb.draw_bitmap(400, 0, dungeon::WIDTH, dungeon::HEIGHT, dungeon::DATA);
@@ -690,6 +704,10 @@ fn game_loop() {
                     }
 
                     if jingle_played == false {
+                        // single draw call
+                        {
+                            get_lfb().lock().flush();
+                        }
                         play_no_thread(SoundEffect::SwitchSceneTheme);
                         jingle_played = true;
                     }
@@ -707,6 +725,9 @@ fn game_loop() {
         }
         
 
-        
+        // single draw call
+        {
+            get_lfb().lock().flush();
+        }
     }
 }

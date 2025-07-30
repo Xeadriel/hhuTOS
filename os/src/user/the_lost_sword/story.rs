@@ -1,7 +1,7 @@
 use alloc::{boxed::Box, string::String};
 
-// use crate::{devices::{cga, lfb::{self, get_lfb, BLACK, TRUE_WHITE, WHITE}}, library::input::{get_last_ch, getch}, user::the_lost_sword::{dungeon_cg, forest_cg, game_over, game_over_sword, sound_effects::{play, play_no_thread, SoundEffect}, title_screen, title_sword, title_sword_small, village_cg}};
-use crate::{devices::{cga, lfb::{self, get_lfb, BLACK, TRUE_WHITE, WHITE}}, library::input::{get_last_ch, getch}, user::the_lost_sword::{dungeon_cg, game_over, game_over_sword, sound_effects::{play, play_no_thread, SoundEffect}, title_screen, title_sword, title_sword_small, village_cg}};
+use crate::{devices::{cga, lfb::{self, get_lfb, BLACK, TRUE_WHITE, WHITE}}, library::input::{get_last_ch, getch}, user::the_lost_sword::{dungeon_cg, forest_cg, game_over, game_over_sword, sound_effects::{play, play_no_thread, SoundEffect}, title_screen, title_sword, title_sword_small, village_cg}};
+// use crate::{devices::{cga, lfb::{self, get_lfb, BLACK, TRUE_WHITE, WHITE}}, library::input::{get_last_ch, getch}, user::the_lost_sword::{dungeon_cg, game_over, game_over_sword, sound_effects::{play, play_no_thread, SoundEffect}, title_screen, title_sword, title_sword_small, village_cg}};
 
 pub struct Story {
     player_name: Option<Box<str>>,
@@ -20,11 +20,6 @@ impl Story {
 
     pub fn get_player_name(&self) -> Option<&str> {
         self.player_name.as_deref()
-    }
-
-    pub fn request_player_name(&mut self) -> Option<Box<str>> {
-        get_lfb().lock().clear();
-        None // placeholder for user input
     }
 
     pub fn play_title_screen(&mut self) {
@@ -130,8 +125,9 @@ impl Story {
         lfb.draw_str_slowly(100, 330, TRUE_WHITE,"Above me: sky. Real sky. Trees. Birds that didn't sound right. The cave was gone.", 20);
         getch();
 
-        // lfb.draw_bitmap(0, 0, forest_cg::WIDTH, forest_cg::HEIGHT, forest_cg::DATA);
-        // getch();
+        lfb.draw_bitmap(0, 0, forest_cg::WIDTH, forest_cg::HEIGHT, forest_cg::DATA);
+        lfb.flush();
+        getch();
         lfb.clear();
 
         let mut y = 50;
@@ -191,6 +187,7 @@ impl Story {
         getch();
 
         lfb.draw_bitmap(0, 0, village_cg::WIDTH, village_cg::HEIGHT, village_cg::DATA);
+        lfb.flush();
         getch();
 
         lfb.clear();
@@ -315,7 +312,7 @@ impl Story {
         lfb.draw_str_slowly(x, y, color, "'You think that's me?' Toni didn't blink.", 20);
         getch();
         y += 25;
-        lfb.draw_str_slowly(x+200, y, color, "I know it is.'", 50);
+        lfb.draw_str_slowly(x+200, y, color, "'I know it is.'", 50);
         getch();
 
         lfb.clear();
@@ -548,6 +545,7 @@ impl Story {
         getch();
 
         lfb.draw_bitmap(0, 0, dungeon_cg::WIDTH, dungeon_cg::HEIGHT, dungeon_cg::DATA);
+        lfb.flush();
         getch();
     }
 

@@ -1,4 +1,7 @@
+use core::ptr::copy_nonoverlapping;
+
 use alloc::string::ToString;
+use alloc::vec;
 use spin::Once;
 use crate::devices::{font_8x8, pit};
 use crate::library::mutex::Mutex;
@@ -8,7 +11,7 @@ static LFB: Once<Mutex<LFB>> = Once::new();
 
 /// Initialize the Linear Framebuffer (LFB).
 pub fn init_lfb(addr: *mut u8, pitch: u32, width: u32, height: u32, bpp: u8) {
-    LFB.call_once(|| { 
+    LFB.call_once(|| {
         Mutex::new(LFB::new(addr, pitch, width, height, bpp))
     });
 }
@@ -25,6 +28,7 @@ pub struct LFB {
     pitch: u32,
     width: u32,
     height: u32,
+    buffer: vec::Vec<u32>,
 }
 
 unsafe impl Send for LFB {}
@@ -90,12 +94,20 @@ pub const HHU_TURQUOISE_10: u32 = color(181, 199, 201);
 
 impl LFB {
     /// Create a new Linear Framebuffer (LFB) instance.
-    const fn new(addr: *mut u8, pitch: u32, width: u32, height: u32, bpp: u8) -> LFB {
+    pub fn new(addr: *mut u8, pitch: u32, width: u32, height: u32, bpp: u8) -> LFB {
         if bpp != 32 {
             panic!("Only 32-bit per pixel (RGBA) format is supported for LFB");
         }
+
+        let buffer = vec![0; (width * height) as usize]; // fill with black
         
-        LFB { addr, pitch, width, height }
+        LFB {
+            addr,
+            pitch,
+            width,
+            height,
+            buffer,
+        }
     }
 
     /// Get the resolution of the framebuffer as (width, height).
@@ -115,13 +127,47 @@ impl LFB {
         }
     }
     
+    /// Copy the internal buffer to the actual framebuffer in one go.
+    pub fn flush(&self) {
+        let total_pixels = (self.width * self.height) as usize;
+
+        unsafe {
+            copy_nonoverlapping(
+                self.buffer.as_ptr(),             // source: internal buffer
+                self.addr as *mut u32,           // destination: video memory
+                total_pixels                     // number of u32 pixels
+            );
+        }
+    }
+
     /// Draw a pixel at the specified (x, y) coordinates with the given color.
     /// This method checks the bounds of the framebuffer before drawing
     /// and omits drawing if the coordinates are out of bounds.
+    /// THIS ONE DRAWS INTO THE BUFFER INSTEAD
     pub fn draw_pixel(&mut self, x: u32, y: u32, color: u32) {
         if x < self.width && y < self.height {
+            let index = (y * self.width + x) as usize;
+            self.buffer[index] = color;
+        }
+    }
+    
+    /// Draw a pixel at the specified (x, y) coordinates with the given color.
+    /// This method does not check the bounds of the framebuffer.
+    /// This is faster than `draw_pixel` but the caller must ensure that the coordinates are valid.
+    /// Drawing outside the framebuffer may lead to undefined behavior.
+    /// THIS ONE DRAWS INTO THE BUFFER INSTEAD
+    pub unsafe fn draw_pixel_unchecked(&mut self, x: u32, y: u32, color: u32) {
+        let index = (y * self.width + x) as usize;
+        *unsafe { self.buffer.get_unchecked_mut(index) } = color;
+    }
+    
+    /// Draw a pixel at the specified (x, y) coordinates with the given color.
+    /// This method checks the bounds of the framebuffer before drawing
+    /// and omits drawing if the coordinates are out of bounds.
+    pub fn draw_pixel_no_buffer(&mut self, x: u32, y: u32, color: u32) {
+        if x < self.width && y < self.height {
             unsafe {
-                self.draw_pixel_unchecked(x, y, color);
+                self.draw_pixel_unchecked_no_buffer(x, y, color);
             }
         }
     }
@@ -130,7 +176,7 @@ impl LFB {
     /// This method does not check the bounds of the framebuffer.
     /// This is faster than `draw_pixel` but the caller must ensure that the coordinates are valid.
     /// Drawing outside the framebuffer may lead to undefined behavior.
-    pub unsafe fn draw_pixel_unchecked(&mut self, x: u32, y: u32, color: u32) {
+    pub unsafe fn draw_pixel_unchecked_no_buffer(&mut self, x: u32, y: u32, color: u32) {
         let offset = (y * self.pitch + x * 4) as usize;
         
         unsafe {
@@ -138,7 +184,7 @@ impl LFB {
             *pixel_ptr = color;
         }
     }
-    
+
     /// Draw a bitmap image at the specified (x, y) coordinates with the given width and height.
     pub fn draw_bitmap(&mut self, x: u32, y: u32, width: u32, height: u32, bitmap: &[u8]) {
         let draw_height = if y + height > self.height {
@@ -195,7 +241,7 @@ impl LFB {
                 let blue = bitmap[index + 2];
 
                 unsafe {
-                    self.draw_pixel_unchecked(xpos + x, ypos + y, color(red, green, blue));
+                    self.draw_pixel_unchecked_no_buffer(xpos + x, ypos + y, color(red, green, blue));
                 }
             }
             pit::wait(delay);
@@ -308,7 +354,7 @@ impl LFB {
                 for byte in 0..width_byte {
                     for bit in (0..8).rev() {
                         if ((1 << bit) & char_pixels[pixel_index]) != 0 {
-                            self.draw_pixel(xpos, ypos, color);
+                            self.draw_pixel_no_buffer(xpos, ypos, color);
                         }
 
                         xpos += 1;
@@ -345,7 +391,7 @@ impl LFB {
                 for byte in 0..width_byte {
                     for bit in (0..8).rev() {
                         if ((1 << bit) & char_pixels[pixel_index]) != 0 {
-                            self.draw_pixel(xpos, ypos, color);
+                            self.draw_pixel_no_buffer(xpos, ypos, color);
                         }
 
                         xpos += 1;

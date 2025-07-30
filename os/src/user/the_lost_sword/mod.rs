@@ -16,7 +16,7 @@ mod title_screen;
 mod title_sword;
 mod title_sword_small;
 mod game_over;
-// mod forest_cg;
+mod forest_cg;
 mod village_cg;
 mod flamefist_down;
 mod flamefist_up;
