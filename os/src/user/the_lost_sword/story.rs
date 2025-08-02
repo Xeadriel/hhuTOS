@@ -210,7 +210,7 @@ impl Story {
         // That's when a young guy, about my age, but with the face of innonce of a kid, came 
         // bounding up to me like I was some returning war hero.
         y += 15;
-        lfb.draw_str_slowly(x, y, color, "That's when a young guy, about my age, but with the face of innonce of a kid, came ", 20);
+        lfb.draw_str_slowly(x, y, color, "That's when a young guy, about my age, but with the face of innocence of a kid, came ", 20);
         y += 15;
         lfb.draw_str_slowly(x, y, color, "bounding up to me like I was some returning war hero.", 20);
         getch();
