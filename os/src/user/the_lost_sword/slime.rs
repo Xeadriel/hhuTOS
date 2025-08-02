@@ -103,7 +103,7 @@ impl Slime {
         
 
         let mut lfb = get_lfb().lock();
-        lfb.draw_bitmap(self.x as u32, self.y as u32, slime_sprite::WIDTH, slime_sprite::HEIGHT, slime_sprite::DATA);
+        lfb.draw_bitmap_rgba(self.x as u32, self.y as u32, slime_sprite::WIDTH, slime_sprite::HEIGHT, slime_sprite::DATA);
             
     }
 }

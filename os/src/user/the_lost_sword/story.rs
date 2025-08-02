@@ -160,6 +160,11 @@ impl Story {
         y += 50;
         lfb.draw_str_slowly(300, y, TRUE_WHITE,"I raised my sword.", 150);
         getch();
+
+        y+= 50;
+        lfb.draw_str_slowly(230, y, TRUE_WHITE,"[Move via wasd keys - Attack using ijkl keys]", 20);
+        getch();
+
     }
 
     pub fn play_village_story(&mut self) {
@@ -445,6 +450,15 @@ impl Story {
         lfb.draw_str_slowly(x, y, color, "I took a breath. Closed my eyes. Felt it - the current I'd been chasing for weeks,", 20);
         y += 15;
         lfb.draw_str_slowly(x, y, color, "running beneath skin and bone like heat waiting for release.", 20);
+        getch();
+
+        // [You Can Now Press F To Perform A Close Combat Fire Attack. Use It To Defeat Drag-Tul When He Is On His Last Heart.]
+        y += 25;
+        lfb.draw_str_slowly(x+60, y, color, "[You Can Now Press F To Perform A Close Combat Fire Attack.]", 20);
+        y += 15;
+        lfb.draw_str_slowly(x+70, y, color, "[Use It To Defeat Drag-Tul When He Is On His Last Heart.]", 20);
+        y += 15;
+        lfb.draw_str_slowly(280, y, color, "[Missing Will Result In Death.]", 20);
         getch();
     }
 

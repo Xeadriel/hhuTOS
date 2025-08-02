@@ -1,5 +1,5 @@
 pub mod the_lost_sword;
-pub mod player;
+mod player;
 mod player_sprite;
 mod grass;
 mod slime_sprite;

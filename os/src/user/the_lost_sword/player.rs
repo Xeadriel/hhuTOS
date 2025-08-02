@@ -15,7 +15,7 @@ pub struct Player {
     pub attack_timer: isize,
     pub attack_direction: Direction,
     pub attack_rect: (isize, isize, isize, isize),
-    pub flame_fist_count: usize,
+    pub flame_fist_count: isize,
     flame_attack_size: (isize, isize),
 }
 
@@ -33,7 +33,7 @@ impl Player {
             attack_timer: 0,
             attack_direction: Direction::NONE,
             attack_rect: (-10, -10, -15, -15), // (x1, y1, x2, y2) absolute coordinates,upper left corner, lower right corner
-            flame_fist_count: 0,
+            flame_fist_count: -1,
             flame_attack_size: (48, 64) // (width, height) size information for rectangle, upper left corner, lower right corner
         }
     }
@@ -54,11 +54,6 @@ impl Player {
             self.hp -= amount;
             self.hit_timer = DAMAGE_GRACE_PERIOD;
             sound_effects::play(sound_effects::SoundEffect::PlayerHit);
-        }
-
-        if self.hp <= 0 {
-            // game over
-            
         }
     }
 
@@ -146,7 +141,7 @@ impl Player {
         
         {
             let mut lfb = get_lfb().lock();
-            lfb.draw_bitmap(self.x as u32, self.y as u32, player_sprite::WIDTH, player_sprite::HEIGHT, player_sprite::DATA);
+            lfb.draw_bitmap_rgba(self.x as u32, self.y as u32, player_sprite::WIDTH, player_sprite::HEIGHT, player_sprite::DATA);
             
             if 0 < self.attack_timer && self.attack_timer <= ATTACK_SPEED {
                 
@@ -156,19 +151,19 @@ impl Player {
                 match self.attack_direction {
                     Direction::UP => {
                         self.attack_rect = (x, y - 64, x + 48, y);
-                        lfb.draw_bitmap((x + 18) as u32, (y - 64) as u32, sword_up::WIDTH, sword_up::HEIGHT, sword_up::DATA);
+                        lfb.draw_bitmap_rgba((x + 18) as u32, (y - 64) as u32, sword_up::WIDTH, sword_up::HEIGHT, sword_up::DATA);
                     }
                     Direction::DOWN => {
                         self.attack_rect = (x , y + 64, x + 48, y + 128);
-                        lfb.draw_bitmap((x + 18) as u32, (y + 64) as u32, sword_down::WIDTH, sword_down::HEIGHT, sword_down::DATA);
+                        lfb.draw_bitmap_rgba((x + 18) as u32, (y + 64) as u32, sword_down::WIDTH, sword_down::HEIGHT, sword_down::DATA);
                     }
                     Direction::LEFT => {
                         self.attack_rect = (x - 64, y + 12, x, y + 48 + 12);
-                        lfb.draw_bitmap((x - 64) as u32, (y + 24) as u32, sword_left::WIDTH, sword_left::HEIGHT, sword_left::DATA);
+                        lfb.draw_bitmap_rgba((x - 64) as u32, (y + 24) as u32, sword_left::WIDTH, sword_left::HEIGHT, sword_left::DATA);
                     }
                     Direction::RIGHT => {
                         self.attack_rect = (x + 48, y + 12, x + 48 + 64, y + 12 + 48);
-                        lfb.draw_bitmap((x + 48) as u32, (y + 24) as u32, sword_right::WIDTH, sword_right::HEIGHT, sword_right::DATA);
+                        lfb.draw_bitmap_rgba((x + 48) as u32, (y + 24) as u32, sword_right::WIDTH, sword_right::HEIGHT, sword_right::DATA);
                     }
                     _ => {}
                 }
@@ -201,17 +196,20 @@ impl Player {
                         sound_effects::play(sound_effects::SoundEffect::SwordSound);
                     }
                     'f' => {
-                        self.flame_fist_count += 1;
-                        sound_effects::play_no_thread(sound_effects::SoundEffect::FlameFist);
-                        let x = self.x;
-                        let y = self.y;
-                        lfb.draw_bitmap_rgba((x - 6) as u32, (y - 48) as u32, flamefist_up::WIDTH, flamefist_up::HEIGHT, flamefist_up::DATA);
-                        lfb.draw_bitmap_rgba((x - 6) as u32, (y + 64) as u32, flamefist_down::WIDTH, flamefist_down::HEIGHT, flamefist_down::DATA);
-                        lfb.draw_bitmap_rgba((x - 48) as u32, (y) as u32, flamefist_left::WIDTH, flamefist_left::HEIGHT, flamefist_left::DATA);
-                        lfb.draw_bitmap_rgba((x + 48) as u32, (y) as u32, flamefist_right::WIDTH, flamefist_right::HEIGHT, flamefist_right::DATA);
-                        lfb.flush();
-                        
-                        pit::wait(1000);
+                        // -1 means player did not learn it yet
+                        if self.flame_fist_count > -1 {
+                            self.flame_fist_count += 1;
+                            sound_effects::play_no_thread(sound_effects::SoundEffect::FlameFist);
+                            let x = self.x;
+                            let y = self.y;
+                            lfb.draw_bitmap_rgba((x - 6) as u32, (y - 48) as u32, flamefist_up::WIDTH, flamefist_up::HEIGHT, flamefist_up::DATA);
+                            lfb.draw_bitmap_rgba((x - 6) as u32, (y + 64) as u32, flamefist_down::WIDTH, flamefist_down::HEIGHT, flamefist_down::DATA);
+                            lfb.draw_bitmap_rgba((x - 48) as u32, (y) as u32, flamefist_left::WIDTH, flamefist_left::HEIGHT, flamefist_left::DATA);
+                            lfb.draw_bitmap_rgba((x + 48) as u32, (y) as u32, flamefist_right::WIDTH, flamefist_right::HEIGHT, flamefist_right::DATA);
+                            lfb.flush();
+                            
+                            pit::wait(1000);
+                        }
                     }
                     _ => {}
                 }
@@ -227,7 +225,7 @@ impl Player {
         let mut lfb = get_lfb().lock();
         
         for i  in 0..self.hp {
-            lfb.draw_bitmap(650 + i as u32 * 24, 10, heart_sprite::WIDTH, heart_sprite::HEIGHT, heart_sprite::DATA);
+            lfb.draw_bitmap_rgba(650 + i as u32 * 24, 10, heart_sprite::WIDTH, heart_sprite::HEIGHT, heart_sprite::DATA);
         }
     }
 }

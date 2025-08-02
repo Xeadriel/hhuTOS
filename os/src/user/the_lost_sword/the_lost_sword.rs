@@ -74,6 +74,7 @@ fn game_loop() {
                     player.x = 400;
                     player.y = 400;
                     player.hp = 3;
+                    player.flame_fist_count = -1;
                     
                     while enemies.len() > 0{
                         enemies.remove(0);
@@ -331,6 +332,7 @@ fn game_loop() {
 
                     player.x = 400;
                     player.y = 400;
+                    player.flame_fist_count = 0;
                     
                     let mut slime = Slime::new();
                     slime.x = 500;
@@ -416,6 +418,7 @@ fn game_loop() {
 
                     player.x = 400;
                     player.y = 400;
+                    player.flame_fist_count = 0;
                     
                     let mut slime = Slime::new();
                     slime.x = 100;
@@ -506,6 +509,7 @@ fn game_loop() {
 
                     player.x = 400;
                     player.y = 400;
+                    player.flame_fist_count = 0;
                     
                     let mut slime = Slime::new();
                     slime.x = 100;
@@ -605,6 +609,7 @@ fn game_loop() {
 
                     player.x = 400;
                     player.y = 400;
+                    player.flame_fist_count = 0;
                     
                     let mut slime = Slime::new();
                     slime.x = 100;

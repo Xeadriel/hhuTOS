@@ -1,4 +1,4 @@
-use crate::{devices::lfb::get_lfb, library::input::{get_last_ch, getch}, user::the_lost_sword::{drag_tul_heart, drag_tul_sprite, player_sprite, rng::RNG, slime, slime_sprite, sound_effects, sword_down, sword_left, sword_right, sword_up}};
+use crate::{devices::lfb::get_lfb, library::input::{get_last_ch, getch}, user::the_lost_sword::{drag_tul_heart, drag_tul_sprite, rng::RNG, sound_effects}};
 
 enum Direction {
     UP,
